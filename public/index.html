@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Transfer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Local Transfer</h1>
+      <div class="user-info">
+        <div class="avatar">
+          <span id="avatar-text"></span>
+        </div>
+        <div class="name" id="user-name"></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="peers-container">
+        <h2>People Nearby</h2>
+        <div id="peers-list" class="peers-list">
+          <div class="no-peers">Waiting for people to join...</div>
+        </div>
+      </div>
+
+      <div class="transfer-container hidden" id="transfer-container">
+        <div class="selected-peer-info">
+          <div class="back-button" id="back-button">←</div>
+          <div class="avatar">
+            <span id="selected-avatar-text"></span>
+          </div>
+          <div class="name" id="selected-peer-name"></div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" data-tab="files">Files</div>
+          <div class="tab" data-tab="messages">Messages</div>
+        </div>
+
+        <div class="tab-content active" id="files-tab">
+          <div class="file-transfer-area">
+            <div class="file-drop-area" id="file-drop-area">
+              <div class="file-input-container">
+                <input type="file" id="file-input" multiple>
+                <label for="file-input" class="file-input-label">
+                  <div class="file-icon">📁</div>
+                  <div>Click to select files or drop them here</div>
+                </label>
+              </div>
+            </div>
+            <button id="send-file-btn" class="send-btn" disabled>Send Files</button>
+          </div>
+
+          <div class="transfer-history">
+            <h3>Transfer History</h3>
+            <div id="file-history" class="history-list"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="messages-tab">
+          <div class="messages-area">
+            <div id="messages-list" class="messages-list"></div>
+            <div class="message-input-area">
+              <input type="text" id="message-input" placeholder="Type a message...">
+              <button id="send-message-btn">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="file-preview-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="preview-file-name">File Preview</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="file-preview-container" class="file-preview-container"></div>
+          <div class="file-info">
+            <div id="file-info-size"></div>
+            <div id="file-info-type"></div>
+          </div>
+          <div class="file-actions">
+            <button id="save-file-btn" class="primary-btn">Save File</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
