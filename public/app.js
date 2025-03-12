@@ -1,12 +1,24 @@
 // Connect to the Socket.IO server
 const socket = io();
 
+function generateName() {
+    const adjectives = ['Happy', 'Brave', 'Calm', 'Eager', 'Gentle', 'Jolly', 'Kind', 'Lively', 'Proud', 'Wise'];
+    const animals = ['Panda', 'Tiger', 'Eagle', 'Dolphin', 'Fox', 'Koala', 'Lion', 'Owl', 'Wolf', 'Zebra'];
+    
+    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+    
+    return `${randomAdjective}${randomAnimal}`;
+}
+
 // Send saved username to server if available
 const savedUsername = localStorage.getItem('localTransferUserName');
 if (savedUsername) {
   socket.emit('set-username', savedUsername);
 } else {
-  socket.emit('set-username', "Cruise");
+  // 如果没有保存的用户名，生成一个新的用户名
+  const clientName = generateName();
+  socket.emit('set-username', clientName);
 }
 
 // Global variables
