@@ -42,18 +42,24 @@
         </div>
 
         <div class="tab-content active" id="files-tab">
-          <div class="file-transfer-area">
-            <div class="file-drop-area" id="file-drop-area">
-              <div class="file-input-container">
-                <input type="file" id="file-input" multiple>
-                <label for="file-input" class="file-input-label">
-                  <div class="file-icon">📁</div>
-                  <div>Click to select files or drop them here</div>
-                </label>
+            <div class="file-transfer-area">
+              <div class="file-drop-area" id="file-drop-area">
+                <div class="upload-options">
+                  <input type="radio" id="upload-file" name="upload-type" value="file" checked>
+                  <label for="upload-file">Upload Files</label>
+                  <input type="radio" id="upload-folder" name="upload-type" value="folder">
+                  <label for="upload-folder">Upload Folders</label>
+                </div>
+                <div class="file-input-container">
+                  <input type="file" id="file-input" multiple>
+                  <label for="file-input" class="file-input-label">
+                    <div class="file-icon">📁</div>
+                    <div>Click to select files or folders</div>
+                  </label>
+                </div>
               </div>
+              <button id="send-file-btn" class="send-btn" disabled>Send Files</button>
             </div>
-            <button id="send-file-btn" class="send-btn" disabled>Send Files</button>
-          </div>
 
           <div class="transfer-history">
             <h3>Transfer History</h3>

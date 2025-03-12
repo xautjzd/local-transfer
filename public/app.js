@@ -679,13 +679,14 @@ function handleFileSelect(files) {
   
   if (selectedFiles.length > 0) {
     // Display selected files in the drop area
-    const fileListHtml = selectedFiles.map(file => {
-      return `<div class="selected-file">
-                <span class="file-icon">📄</span>
-                <span class="file-name">${file.name}</span>
-                <span class="file-size">(${formatFileSize(file.size)})</span>
-              </div>`;
-    }).join('');
+  const fileListHtml = selectedFiles.map((file, index) => {
+    return `<div class="selected-file">
+              <span class="file-icon">📄</span>
+              <span class="file-name">${file.name}</span>
+              <span class="file-size">(${formatFileSize(file.size)})</span>
+              <button class="remove-file-btn" data-index="${index}">Remove</button>
+            </div>`;
+  }).join('');
     
     // Add the file list to the drop area
     const fileInputContainer = fileDropArea.querySelector('.file-input-container');
@@ -699,6 +700,15 @@ function handleFileSelect(files) {
       filesList.innerHTML = fileListHtml;
       fileDropArea.appendChild(filesList);
     }
+
+    // Add event listeners for remove buttons
+  document.querySelectorAll('.remove-file-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const index = e.target.dataset.index;
+      selectedFiles.splice(index, 1);
+      handleFileSelect(selectedFiles);
+    });
+  });
     
     const fileNames = selectedFiles.map(file => file.name).join(', ');
     showToast(`Selected ${selectedFiles.length} file(s): ${fileNames}`);
@@ -777,6 +787,12 @@ async function sendFiles() {
   fileInput.value = '';
   selectedFiles = [];
   sendFileBtn.disabled = true;
+
+  // Remove the file list from the drop area
+//   const existingFileList = fileDropArea.querySelector('.selected-files-list');
+//   if (existingFileList) {
+//     existingFileList.remove();
+//   }
 }
 
 // Add a file to the transfer history
@@ -1107,6 +1123,30 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
     });
   });
+
+  //const fileInput = document.getElementById('file-input');
+  const uploadFileRadio = document.getElementById('upload-file');
+  const uploadFolderRadio = document.getElementById('upload-folder');
+
+  // 监听单选按钮的变化
+  uploadFileRadio.addEventListener('change', () => {
+    if (uploadFileRadio.checked) {
+      fileInput.removeAttribute('webkitdirectory');
+    }
+  });
+
+  uploadFolderRadio.addEventListener('change', () => {
+    if (uploadFolderRadio.checked) {
+      fileInput.setAttribute('webkitdirectory', '');
+    }
+  });
+  
+  // 初始化时根据默认选项设置属性
+  if (uploadFolderRadio.checked) {
+    fileInput.setAttribute('webkitdirectory', '');
+  } else {
+    fileInput.removeAttribute('webkitdirectory');
+  }
   
   // Back button
   backButton.addEventListener('click', showPeersList);

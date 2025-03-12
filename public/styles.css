@@ -218,11 +218,37 @@ main {
   cursor: pointer;
 }
 
+.upload-options {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.upload-options label {
+  margin: 0 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 .file-input-label {
   display: flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
+  padding: 20px;
+  border: 2px dashed #bdc3c7;
+  border-radius: 8px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.file-input-label:hover {
+  background-color: #f0f8ff;
+  border-color: #3498db;
+}
+
+.file-icon {
+  font-size: 50px;
+  margin-bottom: 10px;
 }
 
 .connection-status {
