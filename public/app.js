@@ -6,7 +6,7 @@ const savedUsername = localStorage.getItem('localTransferUserName');
 if (savedUsername) {
   socket.emit('set-username', savedUsername);
 } else {
-  socket.emit('set-username', null);
+  socket.emit('set-username', "Cruise");
 }
 
 // Global variables
