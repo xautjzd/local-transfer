@@ -49,6 +49,8 @@ let myInfo = null;
 let selectedPeer = null;
 let peerConnections = {};
 let selectedFiles = [];
+// 存储每个对等方的文件历史
+let peerFileHistory = {};
 
 // DOM elements
 const userNameElement = document.getElementById("user-name");
@@ -634,6 +636,9 @@ function selectPeer(peer) {
   peersList.parentElement.classList.add("hidden");
   transferContainer.classList.remove("hidden");
 
+  // 在显示传输容器之后，更新文件历史显示
+  updateFileHistoryDisplay(peer.id);
+
   // Clear any notification for this peer
   const peerElement = document.getElementById(`peer-${peer.id}`);
   if (peerElement) {
@@ -889,51 +894,70 @@ async function sendFiles() {
 
 // Add a file to the transfer history
 function addFileToHistory(file) {
-  const historyItem = document.createElement("div");
-  historyItem.className = "history-item";
-
-  // Determine file icon based on type
-  let fileIcon = "📄";
-  if (file.type.startsWith("image/")) {
-    fileIcon = "🖼️";
-  } else if (file.type.startsWith("video/")) {
-    fileIcon = "🎬";
-  } else if (file.type.startsWith("audio/")) {
-    fileIcon = "🎵";
+  // 创建或获取特定对等方的历史记录数组
+  const peerId = file.direction === "sent" ? file.to : file.from;
+  if (!peerFileHistory[peerId]) {
+    peerFileHistory[peerId] = [];
   }
 
-  // Format file size
-  const formattedSize = formatFileSize(file.size);
+  // 将文件添加到特定对等方的历史记录中
+  peerFileHistory[peerId].unshift(file);
 
-  // Format timestamp
-  const formattedTime = new Date(file.timestamp).toLocaleTimeString();
+  // 如果当前选中的是这个对等方，则更新显示
+  if (selectedPeer && selectedPeer.id === peerId) {
+    updateFileHistoryDisplay(peerId);
+  }
+}
 
-  // Create HTML for the history item
-  historyItem.innerHTML = `
-    <div class="history-item-info">
-      <div class="file-type-icon">${fileIcon}</div>
-      <div class="file-details">
-        <div class="file-name">${file.name}</div>
-        <div class="file-meta">
-          ${formattedSize} · ${formattedTime} · 
-          ${file.direction === "sent" ? __("sent") : __("received")}
+function updateFileHistoryDisplay(peerId) {
+  // 清空当前历史显示
+  fileHistory.innerHTML = "";
+
+  // 如果没有该对等方的历史记录，直接返回
+  if (!peerFileHistory[peerId]) return;
+
+  // 显示特定对等方的文件历史
+  peerFileHistory[peerId].forEach((file) => {
+    const historyItem = document.createElement("div");
+    historyItem.className = "history-item";
+
+    // Determine file icon based on type
+    let fileIcon = "📄";
+    if (file.type.startsWith("image/")) {
+      fileIcon = "🖼️";
+    } else if (file.type.startsWith("video/")) {
+      fileIcon = "🎬";
+    } else if (file.type.startsWith("audio/")) {
+      fileIcon = "🎵";
+    }
+
+    const formattedSize = formatFileSize(file.size);
+    const formattedTime = new Date(file.timestamp).toLocaleTimeString();
+
+    historyItem.innerHTML = `
+      <div class="history-item-info">
+        <div class="file-type-icon">${fileIcon}</div>
+        <div class="file-details">
+          <div class="file-name">${file.name}</div>
+          <div class="file-meta">
+            ${formattedSize} · ${formattedTime} · 
+            ${file.direction === "sent" ? __("sent") : __("received")}
+          </div>
         </div>
       </div>
-    </div>
-    <div class="file-action">${__("view")}</div>
-  `;
+      <div class="file-action">${__("view")}</div>
+    `;
 
-  // Add click event to view the file
-  historyItem.querySelector(".file-action").addEventListener("click", () => {
-    showFilePreview(file.data, {
-      name: file.name,
-      size: file.size,
-      type: file.type,
+    historyItem.querySelector(".file-action").addEventListener("click", () => {
+      showFilePreview(file.data, {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
     });
-  });
 
-  // Add to the history list (at the beginning)
-  fileHistory.insertBefore(historyItem, fileHistory.firstChild);
+    fileHistory.appendChild(historyItem);
+  });
 }
 
 // Show file preview in modal
