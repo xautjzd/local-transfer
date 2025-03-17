@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Local Transfer</title>
@@ -15,180 +16,165 @@
     <script src="lang/es.js" defer></script>
     <!-- Load the language manager last -->
     <script src="lang/lang-manager.js" defer></script>
-  </head>
-  <body>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z2E078LW30"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-Z2E078LW30');
+    </script>
+    <!-- End Google Analytics -->
+</head>
+
+<body>
     <div class="container">
-      <header>
-        <h1 data-i18n="appName">Local Transfer</h1>
-        <div class="header-right">
-          <div id="language-container"></div>
-          <div class="user-info">
-            <div class="avatar">
-              <span id="avatar-text"></span>
-            </div>
-            <div class="name" id="user-name"></div>
-          </div>
-        </div>
-      </header>
-
-      <main>
-        <div class="peers-container">
-          <h2 data-i18n="peopleNearby">People Nearby</h2>
-          <div id="peers-list" class="peers-list">
-            <div class="no-peers" data-i18n="waitingForPeople">
-              Waiting for people to join...
-            </div>
-          </div>
-        </div>
-
-        <div class="transfer-container hidden" id="transfer-container">
-          <div class="selected-peer-info">
-            <div class="back-button" id="back-button">←</div>
-            <div class="avatar">
-              <span id="selected-avatar-text"></span>
-            </div>
-            <div class="name" id="selected-peer-name"></div>
-          </div>
-
-          <div class="tabs">
-            <div class="tab active" data-tab="files" data-i18n="files">
-              Files
-            </div>
-            <div class="tab" data-tab="messages" data-i18n="messages">
-              Messages
-            </div>
-          </div>
-
-          <div class="tab-content active" id="files-tab">
-            <div class="file-transfer-area">
-              <!-- 文件上传区域 -->
-              <div class="file-drop-area" id="file-drop-area">
-                <div class="upload-options">
-                  <input
-                    type="radio"
-                    name="upload-type"
-                    id="upload-file"
-                    value="file"
-                    checked
-                  />
-                  <label for="upload-file">
-                    <span data-i18n="uploadFiles">Upload Files</span>
-                  </label>
-                  <input type="radio" name="upload-type" id="upload-folder" />
-                  <label for="upload-folder">
-                    <span data-i18n="uploadFolders">Upload Folders</span>
-                  </label>
-                </div>
-                <div class="file-input-container">
-                  <input type="file" id="file-input" multiple />
-                  <label for="file-input" class="file-input-label">
-                    <div class="file-icon">📁</div>
-                    <!-- 确保所有需要翻译的元素都有 data-i18n 属性 -->
-                    <div class="file-text" data-i18n="selectFilesOrFolders">
-                      Click to select files or folders
+        <header>
+            <h1 data-i18n="appName">Local Transfer</h1>
+            <div class="header-right">
+                <div id="language-container"></div>
+                <div class="user-info">
+                    <div class="avatar">
+                        <span id="avatar-text"></span>
                     </div>
-                  </label>
+                    <div class="name" id="user-name"></div>
                 </div>
-              </div>
+            </div>
+        </header>
 
-              <button
-                id="send-file-btn"
-                class="send-btn"
-                disabled
-                data-i18n="sendFiles"
-              >
-                Send Files
-              </button>
+        <main>
+            <div class="peers-container">
+                <h2 data-i18n="peopleNearby">People Nearby</h2>
+                <div id="peers-list" class="peers-list">
+                    <div class="no-peers" data-i18n="waitingForPeople">
+                        Waiting for people to join...
+                    </div>
+                </div>
+            </div>
 
-              <!-- 文件历史 -->
-              <div class="history-section">
-                <h3 data-i18n="transferHistory">Transfer History</h3>
-                <div id="file-history" class="file-history"></div>
-              </div>
+            <div class="transfer-container hidden" id="transfer-container">
+                <div class="selected-peer-info">
+                    <div class="back-button" id="back-button">←</div>
+                    <div class="avatar">
+                        <span id="selected-avatar-text"></span>
+                    </div>
+                    <div class="name" id="selected-peer-name"></div>
+                </div>
 
-              <!-- 文件预览模态框 -->
-              <div id="file-preview-modal" class="modal hidden">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h3 data-i18n="filePreview">File Preview</h3>
+                <div class="tabs">
+                    <div class="tab active" data-tab="files" data-i18n="files">
+                        Files
+                    </div>
+                    <div class="tab" data-tab="messages" data-i18n="messages">
+                        Messages
+                    </div>
+                </div>
+
+                <div class="tab-content active" id="files-tab">
+                    <div class="file-transfer-area">
+                        <!-- 文件上传区域 -->
+                        <div class="file-drop-area" id="file-drop-area">
+                            <div class="upload-options">
+                                <input type="radio" name="upload-type" id="upload-file" value="file" checked />
+                                <label for="upload-file">
+                                    <span data-i18n="uploadFiles">Upload Files</span>
+                                </label>
+                                <input type="radio" name="upload-type" id="upload-folder" />
+                                <label for="upload-folder">
+                                    <span data-i18n="uploadFolders">Upload Folders</span>
+                                </label>
+                            </div>
+                            <div class="file-input-container">
+                                <input type="file" id="file-input" multiple />
+                                <label for="file-input" class="file-input-label">
+                                    <div class="file-icon">📁</div>
+                                    <!-- 确保所有需要翻译的元素都有 data-i18n 属性 -->
+                                    <div class="file-text" data-i18n="selectFilesOrFolders">
+                                        Click to select files or folders
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button id="send-file-btn" class="send-btn" disabled data-i18n="sendFiles">
+                            Send Files
+                        </button>
+
+                        <!-- 文件历史 -->
+                        <div class="history-section">
+                            <h3 data-i18n="transferHistory">Transfer History</h3>
+                            <div id="file-history" class="file-history"></div>
+                        </div>
+
+                        <!-- 文件预览模态框 -->
+                        <div id="file-preview-modal" class="modal hidden">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3 data-i18n="filePreview">File Preview</h3>
+                                    <span class="close-modal">&times;</span>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="file-preview-header">
+                                        <div id="preview-file-name" class="preview-file-name"></div>
+                                        <div class="file-info">
+                                            <div id="file-info-size"></div>
+                                            <div id="file-info-type"></div>
+                                        </div>
+                                    </div>
+                                    <div id="file-preview-container" class="file-preview-container"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button id="save-file-btn" data-i18n="saveFile">
+                                        Save File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="messages-tab">
+                    <div class="messages-area">
+                        <div id="messages-list" class="messages-list"></div>
+                        <div class="message-input-area">
+                            <input type="text" id="message-input" data-i18n-placeholder="typeMessage"
+                                placeholder="Type a message..." />
+                            <button id="send-message-btn" data-i18n="send">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="file-preview-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="preview-file-name" data-i18n="filePreview">File Preview</h3>
                     <span class="close-modal">&times;</span>
-                  </div>
-                  <div class="modal-body">
-                    <div class="file-preview-header">
-                      <div
-                        id="preview-file-name"
-                        class="preview-file-name"
-                      ></div>
-                      <div class="file-info">
+                </div>
+                <div class="modal-body">
+                    <div id="file-preview-container" class="file-preview-container"></div>
+                    <div class="file-info">
                         <div id="file-info-size"></div>
                         <div id="file-info-type"></div>
-                      </div>
                     </div>
-                    <div
-                      id="file-preview-container"
-                      class="file-preview-container"
-                    ></div>
-                  </div>
-                  <div class="modal-footer">
-                    <button id="save-file-btn" data-i18n="saveFile">
-                      Save File
-                    </button>
-                  </div>
+                    <div class="file-actions">
+                        <button id="save-file-btn" class="primary-btn" data-i18n="saveFile">
+                            Save File
+                        </button>
+                    </div>
                 </div>
-              </div>
             </div>
-          </div>
-
-          <div class="tab-content" id="messages-tab">
-            <div class="messages-area">
-              <div id="messages-list" class="messages-list"></div>
-              <div class="message-input-area">
-                <input
-                  type="text"
-                  id="message-input"
-                  data-i18n-placeholder="typeMessage"
-                  placeholder="Type a message..."
-                />
-                <button id="send-message-btn" data-i18n="send">Send</button>
-              </div>
-            </div>
-          </div>
         </div>
-      </main>
 
-      <div id="file-preview-modal" class="modal hidden">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3 id="preview-file-name" data-i18n="filePreview">File Preview</h3>
-            <span class="close-modal">&times;</span>
-          </div>
-          <div class="modal-body">
-            <div
-              id="file-preview-container"
-              class="file-preview-container"
-            ></div>
-            <div class="file-info">
-              <div id="file-info-size"></div>
-              <div id="file-info-type"></div>
-            </div>
-            <div class="file-actions">
-              <button
-                id="save-file-btn"
-                class="primary-btn"
-                data-i18n="saveFile"
-              >
-                Save File
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="toast" class="toast hidden"></div>
+        <div id="toast" class="toast hidden"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="app.js"></script>
-  </body>
+</body>
+
 </html>
