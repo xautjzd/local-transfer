@@ -4,7 +4,6 @@ const en = {
   waitingForPeople: "Waiting for people to join...",
   files: "Files",
   messages: "Messages",
-  selectFiles: "Click to select files or drop them here",
   sendFiles: "Send Files",
   transferHistory: "Transfer History",
   typeMessage: "Type a message...",
@@ -25,20 +24,16 @@ const en = {
   joined: "joined",
   left: "left",
   newMessageFrom: "New message from",
-  uploadFiles: "Upload Files",
-  uploadFolders: "Upload Folders",
+  selectFiles: "Select Files",
+  selectFolder: "Select Folder",
   selectFilesOrFolders: "Click to select files or folders",
   view: "View",
   unknown: "Unknown",
   connectionTroubleshootingTitle: "Connection Troubleshooting Tips:",
-  connectionTroubleshootingSameNetwork:
-    "Make sure both devices are on the same network",
-  connectionTroubleshootingCorporateNetwork:
-    "Some corporate or public networks may block peer-to-peer connections",
-  connectionTroubleshootingVPN:
-    "Try disabling VPN or proxy services if you're using them",
-  connectionTroubleshootingMobile:
-    "If on mobile, try switching to WiFi instead of cellular data",
+  connectionTroubleshootingSameNetwork: "Make sure both devices are on the same network",
+  connectionTroubleshootingCorporateNetwork: "Some corporate or public networks may block peer-to-peer connections",
+  connectionTroubleshootingVPN: "Try disabling VPN or proxy services if you're using them",
+  connectionTroubleshootingMobile: "If on mobile, try switching to WiFi instead of cellular data",
 };
 
 window.en = en;
