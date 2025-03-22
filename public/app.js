@@ -618,7 +618,7 @@ function addPeerToList(peer) {
 // Update the no peers message
 function updateNoPeersMessage() {
   if (peersList.children.length === 0) {
-    peersList.innerHTML = `<div class="no-peers">${__(
+    peersList.innerHTML = `<div class="no-peers" data-i18n="waitingForPeople">${__(
       "waitingForPeople"
     )}</div>`;
   }
