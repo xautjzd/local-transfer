@@ -34,6 +34,14 @@ const ko = {
   connectionTroubleshootingCorporateNetwork: "일부 기업 또는 공용 네트워크에서는 P2P 연결이 차단될 수 있습니다",
   connectionTroubleshootingVPN: "VPN이나 프록시 서비스를 사용 중이라면 비활성화해 보세요",
   connectionTroubleshootingMobile: "모바일 기기를 사용 중이라면 셀룰러 데이터 대신 WiFi로 전환해 보세요",
+  connectionError: "연결 오류: {0}",
+  establishingConnection: "연결을 설정 중...",
+  connectionIssueDetected: "연결 문제 감지됨. 대체 연결 방법 시도 중...",
+  fileSentSuccessfully: "파일 {0} 전송 성공",
+  errorSendingFile: "파일 전송 중 오류: {0}",
+  fileReceived: "파일 {0} 수신 완료",
+  receivingFile: "{0} 수신 중...",
+  newMessageFrom: "{0}로부터 새 메시지",
 };
 
 window.ko = ko;

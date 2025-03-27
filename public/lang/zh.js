@@ -34,6 +34,14 @@ const zh = {
   connectionTroubleshootingCorporateNetwork: "部分企业或公共网络可能会阻止点对点连接",
   connectionTroubleshootingVPN: "如果正在使用 VPN 或代理服务，请尝试关闭",
   connectionTroubleshootingMobile: "如果使用移动设备，请尝试切换到 WiFi 网络",
+  connectionError: "连接错误：{0}",
+  establishingConnection: "正在建立连接...",
+  connectionIssueDetected: "检测到连接问题，尝试替代连接方法...",
+  fileSentSuccessfully: "文件 {0} 发送成功",
+  errorSendingFile: "发送文件时出错：{0}",
+  fileReceived: "{0} 文件接收成功",
+  receivingFile: "正在接收文件 {0}...",
+  newMessageFrom: "来自 {0} 的新消息",
 };
 
 window.zh = zh;

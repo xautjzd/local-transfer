@@ -34,6 +34,14 @@ const ja = {
   connectionTroubleshootingCorporateNetwork: "企業や公共のネットワークではピアツーピア接続がブロックされている場合があります",
   connectionTroubleshootingVPN: "VPNやプロキシサービスを使用している場合は、無効にしてみてください",
   connectionTroubleshootingMobile: "モバイルデバイスの場合は、セルラーデータの代わりにWiFiに切り替えてみてください",
+  connectionError: "接続エラー：{0}",
+  establishingConnection: "接続を確立しています...",
+  connectionIssueDetected: "接続問題が検出されました。代替接続方法を試しています...",
+  fileSentSuccessfully: "ファイル {0} が正常に送信されました",
+  errorSendingFile: "ファイル送信中にエラーが発生しました：{0}",
+  fileReceived: "ファイル {0} を受信しました",
+  receivingFile: "{0} を受信中...",
+  newMessageFrom: "{0} からの新しいメッセージ",
 };
 
 window.ja = ja;

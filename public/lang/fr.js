@@ -34,6 +34,14 @@ const fr = {
   connectionTroubleshootingCorporateNetwork: "Certains réseaux d'entreprise ou publics peuvent bloquer les connexions pair à pair",
   connectionTroubleshootingVPN: "Essayez de désactiver les services VPN ou proxy si vous les utilisez",
   connectionTroubleshootingMobile: "Sur mobile, essayez de passer au WiFi plutôt qu'aux données cellulaires",
+  connectionError: "Erreur de connexion : {0}",
+  establishingConnection: "Établissement de la connexion...",
+  connectionIssueDetected: "Problème de connexion détecté. Tentative de méthode de connexion alternative...",
+  fileSentSuccessfully: "Fichier {0} envoyé avec succès",
+  errorSendingFile: "Erreur lors de l'envoi du fichier : {0}",
+  fileReceived: "Fichier {0} reçu",
+  receivingFile: "Réception de {0}...",
+  newMessageFrom: "Nouveau message de {0}",
 };
 
 window.fr = fr;

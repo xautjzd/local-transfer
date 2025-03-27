@@ -34,6 +34,14 @@ const en = {
   connectionTroubleshootingCorporateNetwork: "Some corporate or public networks may block peer-to-peer connections",
   connectionTroubleshootingVPN: "Try disabling VPN or proxy services if you're using them",
   connectionTroubleshootingMobile: "If on mobile, try switching to WiFi instead of cellular data",
+  connectionError: "Connection error: {0}",
+  establishingConnection: "Establishing connection...",
+  connectionIssueDetected: "Connection issue detected. Trying alternative connection method...",
+  fileSentSuccessfully: "File {0} sent successfully",
+  errorSendingFile: "Error sending file: {0}",
+  fileReceived: "File {0} received",
+  receivingFile: "Receiving {0}...",
+  newMessageFrom: "New message from {0}",
 };
 
 window.en = en;

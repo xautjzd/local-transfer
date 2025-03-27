@@ -190,7 +190,7 @@ socket.on("receive-message", (data) => {
       peerElement.classList.add("has-notification");
     }
 
-    showToast(`${__("newMessageFrom")} ${data.fromName}`);
+    showToast(`i18n:${__("newMessageFrom")}:${data.fromName}`);
   }
 });
 
@@ -302,7 +302,7 @@ function createPeerConnection(peerId, turnOnly = false) {
       receivedSize = 0;
       fileInfo = data.info;
 
-      showToast(`Receiving ${fileInfo.name}...`);
+      showToast(`i18n:receivingFile:${fileInfo.name}`);
     } else if (data.type === "file-data") {
       // Collect file chunks
       receivedData.push(data.chunk);
@@ -326,7 +326,7 @@ function createPeerConnection(peerId, turnOnly = false) {
         });
 
         showFilePreview(fileBlob, fileInfo);
-        showToast(`File ${fileInfo.name} received`);
+        showToast(`i18n:fileReceived:${fileInfo.name}`);
 
         // Reset for next transfer
         receivedData = [];
@@ -481,7 +481,7 @@ function createPeerConnection(peerId, turnOnly = false) {
         ) {
           console.log("Still not connected, trying with TURN servers only...");
           showToast(
-            "Connection issue detected. Trying alternative connection method...",
+            `i18n:connectionIssueDetected`,
             5000,
             true
           );
@@ -676,7 +676,7 @@ async function initiateConnection(peerId) {
     // Update UI to show connecting status
     if (selectedPeer && selectedPeer.id === peerId) {
       updateConnectionStatus("connecting");
-      showToast("Establishing connection...", 2000);
+      showToast(`i18n:establishingConnection`, 2000);
     }
 
     // Log connection attempt details
@@ -727,7 +727,7 @@ async function initiateConnection(peerId) {
   } catch (error) {
     console.error("Error during connection initiation:", error);
     if (selectedPeer && selectedPeer.id === peerId) {
-      showToast("Connection error: " + error.message, 4000, true);
+      showToast(`i18n:connectionError:${error.message}`, 4000, true);
 
       // Try to recover from the error
       setTimeout(() => {
@@ -804,7 +804,7 @@ function handleFileSelect(files) {
     });
 
     const fileNames = selectedFiles.map((file) => file.name).join(", ");
-    showToast(`Selected ${selectedFiles.length} file(s): ${fileNames}`);
+    //showToast(`Selected ${selectedFiles.length} file(s): ${fileNames}`);
   } else {
     // Remove the file list if no files are selected
     const existingFileList = fileDropArea.querySelector(".selected-files-list");
@@ -873,10 +873,10 @@ async function sendFiles() {
         timestamp: new Date().toISOString(),
       });
 
-      showToast(`File ${file.name} sent successfully`);
+      showToast(`i18n:fileSentSuccessfully:${file.name}`);
     } catch (error) {
       console.error("Error sending file:", error);
-      showToast(`Error sending file: ${error.message}`);
+      showToast(`i18n:errorSendingFile:${error.message}`);
     }
   }
 
@@ -1080,8 +1080,17 @@ function addMessageToList(data, isSent) {
 function showToast(message, duration = 3000, isError = false) {
   // 检查是否是国际化键
   if (typeof message === "string" && message.startsWith("i18n:")) {
-    const key = message.substring(5);
+    const parts = message.split(":");
+    const key = parts[1];
+    const params = parts.slice(2);
+
     message = __(key);
+
+    // 替换占位符
+    params.forEach((param, index) => {
+      const placeholder = `{${index}}`;
+      message = message.replace(placeholder, param);
+    });
   }
 
   toast.textContent = message;
