@@ -1,5 +1,5 @@
 const en = {
-  appName: "Local Transfer",
+  appName: "Local Share",
   peopleNearby: "People Nearby",
   waitingForPeople: "Waiting for people to join...",
   files: "Files",
