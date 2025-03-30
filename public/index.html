@@ -8,6 +8,12 @@
     <meta name="description"
         content="Local Transfer is an app similar to Snapdrop, designed for peer-to-peer (P2P) file(including images, videos, pdf etc) transfer and message sharing over WiFi within a local network, offering a fast and secure transmission experience.">
     <meta name="keywords" content="File, Transfer, Share, Peer2Peer, Wifi, P2P, LAN， Snapdrop">
+    <!-- 添加移动设备支持 -->
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- 字体图标支持 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
     <!-- 加载语言文件 -->
@@ -36,7 +42,7 @@
         <header>
             <h1 data-i18n="appName">LocalShare</h1>
             <div class="header-right">
-                <div id="language-container"></div>
+                <div id="language-container" class="language-selector"></div>
                 <div class="user-info">
                     <div class="avatar">
                         <span id="avatar-text"></span>
@@ -47,52 +53,57 @@
         </header>
 
         <main>
-            <div class="peers-container">
+            <section class="peers-container">
                 <h2 data-i18n="peopleNearby">People Nearby</h2>
-                <div id="peers-list" class="peers-list">
+                <div id="peers-list" class="peers-list" aria-live="polite">
                     <div class="no-peers" data-i18n="waitingForPeople">
                         Waiting for people to join...
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="transfer-container hidden" id="transfer-container">
+            <section class="transfer-container hidden" id="transfer-container">
                 <div class="selected-peer-info">
-                    <div class="back-button" id="back-button">←</div>
+                    <button class="back-button" id="back-button" aria-label="返回">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
                     <div class="avatar">
                         <span id="selected-avatar-text"></span>
                     </div>
                     <div class="name" id="selected-peer-name"></div>
                 </div>
 
-                <div class="tabs">
-                    <div class="tab active" data-tab="files" data-i18n="files">
+                <div class="tabs" role="tablist">
+                    <button class="tab active" data-tab="files" data-i18n="files" role="tab" aria-selected="true" aria-controls="files-tab">
                         Files
-                    </div>
-                    <div class="tab" data-tab="messages" data-i18n="messages">
+                    </button>
+                    <button class="tab" data-tab="messages" data-i18n="messages" role="tab" aria-selected="false" aria-controls="messages-tab">
                         Messages
-                    </div>
+                    </button>
                 </div>
 
-                <div class="tab-content active" id="files-tab">
+                <div class="tab-content active" id="files-tab" role="tabpanel">
                     <div class="file-transfer-area">
                         <!-- 文件上传区域 -->
                         <div class="file-drop-area" id="file-drop-area">
                             <div class="upload-options">
                                 <input type="radio" name="upload-type" id="upload-file" value="file" checked />
                                 <label for="upload-file">
+                                    <i class="fas fa-file-alt"></i>
                                     <span data-i18n="selectFiles">选择文件</span>
                                 </label>
                                 <input type="radio" name="upload-type" id="upload-folder" />
                                 <label for="upload-folder">
+                                    <i class="fas fa-folder"></i>
                                     <span data-i18n="selectFolder">选择文件夹</span>
                                 </label>
                             </div>
                             <div class="file-input-container">
-                                <input type="file" id="file-input" multiple />
+                                <input type="file" id="file-input" multiple aria-label="选择文件" />
                                 <label for="file-input" class="file-input-label">
-                                    <div class="file-icon">📁</div>
-                                    <!-- 确保所有需要翻译的元素都有 data-i18n 属性 -->
+                                    <div class="file-icon">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
                                     <div class="file-text" data-i18n="selectFilesOrFolders">
                                         Click to select files or folders
                                     </div>
@@ -101,7 +112,7 @@
                         </div>
 
                         <button id="send-file-btn" class="send-btn" disabled data-i18n="sendFiles">
-                            Send Files
+                            <i class="fas fa-paper-plane"></i> Send Files
                         </button>
 
                         <!-- 文件历史 -->
@@ -109,69 +120,52 @@
                             <h3 data-i18n="transferHistory">Transfer History</h3>
                             <div id="file-history" class="file-history"></div>
                         </div>
-
-                        <!-- 文件预览模态框 -->
-                        <div id="file-preview-modal" class="modal hidden">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h3 data-i18n="filePreview">File Preview</h3>
-                                    <span class="close-modal">&times;</span>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="file-preview-header">
-                                        <div id="preview-file-name" class="preview-file-name"></div>
-                                        <div class="file-info">
-                                            <div id="file-info-size"></div>
-                                            <div id="file-info-type"></div>
-                                        </div>
-                                    </div>
-                                    <div id="file-preview-container" class="file-preview-container"></div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button id="save-file-btn" data-i18n="saveFile">
-                                        Save File
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                <div class="tab-content" id="messages-tab">
+                <div class="tab-content" id="messages-tab" role="tabpanel">
                     <div class="messages-area">
-                        <div id="messages-list" class="messages-list"></div>
+                        <div id="messages-list" class="messages-list" aria-live="polite"></div>
                         <div class="message-input-area">
                             <input type="text" id="message-input" data-i18n-placeholder="typeMessage"
-                                placeholder="Type a message..." />
-                            <button id="send-message-btn" data-i18n="send">Send</button>
+                                placeholder="Type a message..." aria-label="输入消息" />
+                            <button id="send-message-btn" aria-label="发送消息">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </main>
 
-        <div id="file-preview-modal" class="modal hidden">
+        <!-- 文件预览模态框 -->
+        <div id="file-preview-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="preview-title">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 id="preview-file-name" data-i18n="filePreview">File Preview</h3>
-                    <span class="close-modal">&times;</span>
+                    <h3 id="preview-title" data-i18n="filePreview">File Preview</h3>
+                    <button class="close-modal" aria-label="关闭预览">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <div class="modal-body">
-                    <div id="file-preview-container" class="file-preview-container"></div>
-                    <div class="file-info">
-                        <div id="file-info-size"></div>
-                        <div id="file-info-type"></div>
+                    <div class="file-preview-header">
+                        <div id="preview-file-name" class="preview-file-name"></div>
+                        <div class="file-info">
+                            <div id="file-info-size"></div>
+                            <div id="file-info-type"></div>
+                        </div>
                     </div>
+                    <div id="file-preview-container" class="file-preview-container"></div>
                     <div class="file-actions">
                         <button id="save-file-btn" class="primary-btn" data-i18n="saveFile">
-                            Save File
+                            <i class="fas fa-download"></i> Save File
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="toast" class="toast hidden"></div>
+        <div id="toast" class="toast hidden" role="alert" aria-live="assertive"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
