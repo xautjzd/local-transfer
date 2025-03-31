@@ -34,6 +34,7 @@ const es = {
   selectFiles: "Seleccionar archivos",
   selectFolder: "Seleccionar carpeta",
   selectFilesOrFolders: "Haga clic para seleccionar archivos o carpetas",
+  dragAndDropHint: "Arrastra y suelta archivos aquí",
   view: "Ver",
   unknown: "Desconocido",
   connectionTroubleshootingTitle: "Consejos para solucionar problemas de conexión:",

@@ -271,8 +271,13 @@ main {
 .upload-options {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--spacing-sm);
-  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  gap: var(--spacing-md);
+  background-color: var(--gray-100);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  width: fit-content;
+  margin: 0 auto var(--spacing-md);
 }
 
 .upload-options input[type="radio"] {
@@ -281,36 +286,41 @@ main {
 }
 
 .upload-options label {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: all var(--transition-fast);
   font-weight: 500;
+  color: var(--gray-500);
+  background-color: transparent;
+  border: 1px solid transparent;
+}
+
+.upload-options label i {
+  font-size: 1.1rem;
 }
 
 .upload-options input[type="radio"]:checked + label {
-  background-color: var(--primary-color);
-  color: var(--white);
+  background-color: var(--white);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .upload-options input[type="radio"]:not(:checked) + label:hover {
-  background-color: var(--gray-100);
+  background-color: var(--white);
+  color: var(--primary-color);
+  border-color: var(--gray-300);
 }
 
 .file-input-container {
   position: relative;
   width: 100%;
-}
-
-#file-input {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .file-input-label {
@@ -318,21 +328,53 @@ main {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xl);
   border: 2px dashed var(--gray-300);
   border-radius: var(--border-radius-md);
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition: all var(--transition-fast);
+  background-color: var(--white);
 }
 
 .file-input-label:hover {
   background-color: rgba(52, 152, 219, 0.05);
   border-color: var(--primary-color);
+  transform: translateY(-2px);
 }
 
 .file-icon {
   font-size: 3rem;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
   color: var(--gray-400);
+  transition: color var(--transition-fast);
+}
+
+.file-input-label:hover .file-icon {
+  color: var(--primary-color);
+}
+
+.file-text {
+  color: var(--gray-500);
+  font-size: 1.1rem;
+  text-align: center;
+  transition: color var(--transition-fast);
+}
+
+.file-input-label:hover .file-text {
+  color: var(--primary-color);
+}
+
+.file-hint {
+  color: var(--gray-400);
+  font-size: 0.9rem;
+  margin-top: var(--spacing-sm);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all var(--transition-fast);
+}
+
+.file-input-label:hover .file-hint {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* 按钮样式 */
@@ -674,6 +716,33 @@ main {
   .modal-content {
     width: 95%;
   }
+  
+  .upload-options {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--spacing-sm);
+  }
+  
+  .upload-options label {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .file-input-label {
+    padding: var(--spacing-lg);
+  }
+  
+  .file-icon {
+    font-size: 2.5rem;
+  }
+  
+  .file-text {
+    font-size: 1rem;
+  }
+  
+  .file-hint {
+    font-size: 0.8rem;
+  }
 }
 
 /* 暗色模式支持 */
@@ -720,5 +789,21 @@ main {
   
   .file-input-label:hover {
     background-color: rgba(52, 152, 219, 0.1);
+  }
+  
+  .upload-options {
+    background-color: var(--gray-200);
+  }
+  
+  .upload-options input[type="radio"]:checked + label {
+    background-color: var(--gray-100);
+  }
+  
+  .file-input-label {
+    background-color: var(--gray-100);
+  }
+  
+  .file-hint {
+    color: var(--gray-500);
   }
 }

@@ -27,6 +27,7 @@ const fr = {
   selectFiles: "Sélectionner des fichiers",
   selectFolder: "Sélectionner un dossier",
   selectFilesOrFolders: "Cliquez pour sélectionner des fichiers ou des dossiers",
+  dragAndDropHint: "Glissez-déposez les fichiers ici",
   view: "Voir",
   unknown: "Inconnu",
   connectionTroubleshootingTitle: "Conseils de dépannage de connexion :",

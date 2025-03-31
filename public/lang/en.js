@@ -27,6 +27,7 @@ const en = {
   selectFiles: "Select Files",
   selectFolder: "Select Folder",
   selectFilesOrFolders: "Click to select files or folders",
+  dragAndDropHint: "Drag and drop files here",
   view: "View",
   unknown: "Unknown",
   connectionTroubleshootingTitle: "Connection Troubleshooting Tips:",

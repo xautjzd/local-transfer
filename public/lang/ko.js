@@ -27,6 +27,7 @@ const ko = {
   selectFiles: "파일 선택",
   selectFolder: "폴더 선택",
   selectFilesOrFolders: "파일 또는 폴더를 선택하려면 클릭하세요",
+  dragAndDropHint: "파일을 여기에 드래그 앤 드롭",
   view: "보기",
   unknown: "알 수 없음",
   connectionTroubleshootingTitle: "연결 문제 해결 팁:",

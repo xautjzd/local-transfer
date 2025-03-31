@@ -27,6 +27,7 @@ const ja = {
   selectFiles: "ファイルを選択",
   selectFolder: "フォルダを選択",
   selectFilesOrFolders: "クリックしてファイルまたはフォルダを選択",
+  dragAndDropHint: "ファイルをここにドラッグ＆ドロップ",
   view: "表示",
   unknown: "不明",
   connectionTroubleshootingTitle: "接続のトラブルシューティング：",

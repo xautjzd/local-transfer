@@ -27,6 +27,7 @@ const zh = {
   selectFiles: "选择文件",
   selectFolder: "选择文件夹",
   selectFilesOrFolders: "点击选择文件或文件夹",
+  dragAndDropHint: "支持拖拽文件到此处",
   view: "查看",
   unknown: "未知",
   connectionTroubleshootingTitle: "连接故障排除提示：",
