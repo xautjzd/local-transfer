@@ -959,9 +959,10 @@ async function sendFiles() {
     }
   }
 
-  // Reset the file input
+  // Reset the file input and clear the file list
   fileInput.value = "";
   selectedFiles.clear();
+  fileList.innerHTML = ""; // 清空文件列表的 DOM 元素
   sendFileBtn.disabled = true;
 }
 
