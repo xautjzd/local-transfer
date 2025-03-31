@@ -1253,38 +1253,96 @@ main {
   font-size: 1rem;
 }
 
-/* 暗色模式适配 */
-@media (prefers-color-scheme: dark) {
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .file-history {
+    padding: 0.75rem;
+  }
+
   .history-item {
-    background: var(--bg-primary-dark);
-    border-color: var(--border-color-dark);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .history-item-content {
+    gap: 0.75rem;
   }
 
   .file-icon-wrapper {
-    background: var(--bg-secondary-dark);
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
   }
 
-  .action-btn:hover {
-    background: var(--bg-secondary-dark);
+  .file-name {
+    font-size: 0.9rem;
   }
-}
 
-/* 响应式适配 */
-@media (max-width: 768px) {
   .file-meta {
     flex-wrap: wrap;
     gap: 0.5rem;
+    font-size: 0.8rem;
   }
 
   .file-direction {
-    width: 100%;
-    justify-content: center;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
   }
 
-  .file-actions {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
+  .action-btn {
+    padding: 0.4rem;
+  }
+
+  .action-btn i {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .file-history {
+    padding: 0.5rem;
+  }
+
+  .history-item {
+    padding: 0.5rem;
+  }
+
+  .history-item-content {
+    gap: 0.5rem;
+  }
+
+  .file-icon-wrapper {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .file-name {
+    font-size: 0.85rem;
+  }
+
+  .file-meta {
+    font-size: 0.75rem;
+  }
+
+  .file-direction {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.65rem;
+  }
+
+  .action-btn {
+    padding: 0.3rem;
+  }
+
+  .action-btn i {
+    font-size: 0.85rem;
+  }
+
+  .empty-history i {
+    font-size: 2.5rem;
+  }
+
+  .empty-history p {
+    font-size: 0.9rem;
   }
 }

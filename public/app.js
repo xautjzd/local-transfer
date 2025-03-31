@@ -251,7 +251,7 @@ socket.on("init", (data) => {
 socket.on("client-joined", (client) => {
   // Add the new client to the peers list
   addPeerToList(client);
-  showToast(`${peerName} ${__("joined")}`);
+  showToast(`${client.name} ${__("joined")}`);
 });
 
 // Handle client leaving
