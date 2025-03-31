@@ -486,6 +486,11 @@ main {
   cursor: not-allowed;
 }
 
+.send-btn:not(:disabled) {
+  background-color: var(--primary-color);
+  cursor: pointer;
+}
+
 /* 消息区域 */
 .messages-area {
   display: flex;

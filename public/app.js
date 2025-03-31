@@ -151,14 +151,39 @@ function createFileItem(file) {
 
 // 处理文件选择
 function handleFileSelect(files) {
+  // 如果没有文件，直接返回
+  if (!files || files.length === 0) {
+    console.log('没有选择文件，跳过处理');
+    return;
+  }
+
+  console.log('处理文件选择:', {
+    filesCount: files.length,
+    selectedPeer: selectedPeer ? selectedPeer.id : null,
+    connection: peerConnections[selectedPeer?.id] ? '存在' : '不存在',
+    dataChannel: peerConnections[selectedPeer?.id]?.dataChannel ? '存在' : '不存在',
+    dataChannelState: peerConnections[selectedPeer?.id]?.dataChannel?.readyState,
+    currentSelectedFilesSize: selectedFiles.size
+  });
+
   // 清空之前的文件列表
   fileList.innerHTML = "";
   selectedFiles.clear();
   
   // 添加新选择的文件
   Array.from(files).forEach(file => {
+    console.log('添加文件:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
     selectedFiles.add(file);
     fileList.appendChild(createFileItem(file));
+  });
+  
+  console.log('文件选择完成:', {
+    selectedFilesSize: selectedFiles.size,
+    fileListChildrenCount: fileList.children.length
   });
   
   // 更新发送按钮状态
@@ -172,14 +197,43 @@ function updateSendButton() {
     peerConnections[selectedPeer.id].dataChannel && 
     peerConnections[selectedPeer.id].dataChannel.readyState === "open";
   
-  sendFileBtn.disabled = selectedFiles.size === 0 || !isConnected;
+  console.log('更新发送按钮状态:', {
+    selectedFilesSize: selectedFiles.size,
+    selectedPeer: selectedPeer ? selectedPeer.id : null,
+    peerConnection: peerConnections[selectedPeer?.id] ? '存在' : '不存在',
+    dataChannel: peerConnections[selectedPeer?.id]?.dataChannel ? '存在' : '不存在',
+    dataChannelState: peerConnections[selectedPeer?.id]?.dataChannel?.readyState,
+    isConnected
+  });
+  
+  const shouldDisable = selectedFiles.size === 0 || !isConnected;
+  console.log('按钮状态:', { shouldDisable });
+  
+  sendFileBtn.disabled = shouldDisable;
+  
+  // 强制更新按钮样式
+  if (!shouldDisable) {
+    sendFileBtn.style.backgroundColor = 'var(--primary-color)';
+    sendFileBtn.style.cursor = 'pointer';
+  } else {
+    sendFileBtn.style.backgroundColor = 'var(--gray-300)';
+    sendFileBtn.style.cursor = 'not-allowed';
+  }
 }
 
 // 文件输入框变化事件
 fileInput.addEventListener('change', (e) => {
+  console.log('文件输入框变化:', {
+    filesCount: e.target.files.length,
+    selectedFilesSize: selectedFiles.size
+  });
+  
+  if (e.target.files && e.target.files.length > 0) {
     handleFileSelect(e.target.files);
-    // 清空输入框，允许重复选择同一文件
-    e.target.value = '';
+  }
+  
+  // 清空输入框，允许重复选择同一文件
+  e.target.value = '';
 });
 
 // 拖放文件处理
@@ -201,7 +255,14 @@ fileDropArea.addEventListener('drop', (e) => {
     fileDropArea.classList.remove('drag-over');
     
     const files = e.dataTransfer.files;
-    handleFileSelect(files);
+    if (files && files.length > 0) {
+      console.log('拖放文件:', {
+        filesCount: files.length,
+        selectedFilesSize: selectedFiles.size
+      });
+      
+      handleFileSelect(files);
+    }
 });
 
 // 上传类型切换
@@ -413,13 +474,17 @@ function createPeerConnection(peerId, turnOnly = false) {
     ordered: true,
   });
 
-  let receivedData = [];
-  let receivedSize = 0;
+  console.log('创建数据通道:', {
+    peerId,
+    dataChannelState: dataChannel.readyState
+  });
+
+  let receivedData = {};  // 修改为对象，用于存储多个文件的数据
   let fileInfo = null;
   let connectionTimeout = null;
 
   dataChannel.onopen = () => {
-    console.log(`Data channel with ${peerId} opened`);
+    console.log(`数据通道已打开: ${peerId}`);
     // Clear any connection timeout
     if (connectionTimeout) {
       clearTimeout(connectionTimeout);
@@ -428,13 +493,18 @@ function createPeerConnection(peerId, turnOnly = false) {
 
     // Update UI if this is the selected peer
     if (selectedPeer && selectedPeer.id === peerId) {
+      console.log('更新连接状态为已连接');
       updateConnectionStatus("connected");
       sendFileBtn.disabled = selectedFiles.size === 0;
     }
   };
 
   dataChannel.onclose = () => {
-    console.log(`Data channel with ${peerId} closed`);
+    console.log(`数据通道已关闭: ${peerId}`);
+  };
+
+  dataChannel.onerror = (error) => {
+    console.error(`数据通道错误: ${peerId}`, error);
   };
 
   dataChannel.onmessage = (event) => {
@@ -442,36 +512,44 @@ function createPeerConnection(peerId, turnOnly = false) {
 
     // Handle different types of messages
     if (data.type === "file-info") {
-      // Reset for new file
-      receivedData = [];
-      receivedSize = 0;
+      // 为新文件创建接收缓冲区
       fileInfo = data.info;
+      receivedData[fileInfo.name] = {
+        chunks: [],
+        receivedSize: 0,
+        fileInfo: fileInfo
+      };
 
       console.log(`开始接收文件: ${fileInfo.name}, 大小: ${fileInfo.size}`);
       showToast(`i18n:receivingFile:${fileInfo.name}`);
     } else if (data.type === "file-data") {
-      // Collect file chunks
-      receivedData.push(data.chunk);
-      receivedSize += data.chunk.length;
+      // 确保我们有文件信息
+      if (!fileInfo) {
+        console.error('收到文件数据但没有文件信息');
+        return;
+      }
 
-      console.log(`接收文件块: ${fileInfo.name}, 当前大小: ${receivedSize}/${fileInfo.size}`);
+      const currentFile = receivedData[fileInfo.name];
+      if (!currentFile) {
+        console.error(`找不到文件 ${fileInfo.name} 的接收缓冲区`);
+        return;
+      }
 
-      // Check if file transfer is complete
-      if (receivedSize === fileInfo.size) {
+      // 收集文件块
+      currentFile.chunks.push(data.chunk);
+      currentFile.receivedSize += data.chunk.length;
+
+      console.log(`接收文件块: ${fileInfo.name}, 当前大小: ${currentFile.receivedSize}/${fileInfo.size}`);
+
+      // 检查文件是否接收完成
+      if (currentFile.receivedSize === fileInfo.size) {
         console.log(`文件接收完成: ${fileInfo.name}`);
         try {
-          // Combine chunks and create file
-          const fileData = receivedData.join("");
+          // 合并块并创建文件
+          const fileData = currentFile.chunks.join("");
           const fileBlob = base64ToBlob(fileData, fileInfo.type);
 
-          // Verify file size
-          if (fileBlob.size !== fileInfo.size) {
-            console.error(`文件大小不匹配: 预期 ${fileInfo.size}, 实际 ${fileBlob.size}`);
-            showToast(`i18n:errorSendingFile:文件大小不匹配`);
-            return;
-          }
-
-          // Add to history and show preview
+          // 添加到历史并显示预览
           addFileToHistory({
             name: fileInfo.name,
             size: fileInfo.size,
@@ -484,22 +562,29 @@ function createPeerConnection(peerId, turnOnly = false) {
 
           showFilePreview(fileBlob, fileInfo);
           showToast(`i18n:fileReceived:${fileInfo.name}`);
+
+          // 清理这个文件的接收数据
+          delete receivedData[fileInfo.name];
+          if (Object.keys(receivedData).length === 0) {
+            fileInfo = null;
+          }
         } catch (error) {
           console.error(`处理文件时出错: ${fileInfo.name}`, error);
           showToast(`i18n:errorSendingFile:${error.message}`);
-        } finally {
-          // Reset for next transfer
-          receivedData = [];
-          receivedSize = 0;
+          // 清理错误文件的数据
+          delete receivedData[fileInfo.name];
+          if (Object.keys(receivedData).length === 0) {
+            fileInfo = null;
+          }
+        }
+      } else if (currentFile.receivedSize > fileInfo.size) {
+        console.error(`文件大小超出预期: ${fileInfo.name}, 当前大小: ${currentFile.receivedSize}`);
+        showToast(`i18n:errorSendingFile:文件大小超出预期`);
+        // 清理错误文件的数据
+        delete receivedData[fileInfo.name];
+        if (Object.keys(receivedData).length === 0) {
           fileInfo = null;
         }
-      } else if (receivedSize > fileInfo.size) {
-        console.error(`文件大小超出预期: ${fileInfo.name}, 当前大小: ${receivedSize}`);
-        showToast(`i18n:errorSendingFile:文件大小超出预期`);
-        // Reset for next transfer
-        receivedData = [];
-        receivedSize = 0;
-        fileInfo = null;
       }
     }
   };
@@ -794,6 +879,7 @@ function updateNoPeersMessage() {
 
 // Select a peer to communicate with
 function selectPeer(peer) {
+  console.log('选择对等方:', peer);
   selectedPeer = peer;
 
   // Update the UI
@@ -815,14 +901,22 @@ function selectPeer(peer) {
 
   // Ensure we have a peer connection
   if (!peerConnections[peer.id]) {
+    console.log('创建新的对等连接');
     createPeerConnection(peer.id);
 
     // Create an offer to establish the connection
+    console.log('发起连接');
     initiateConnection(peer.id);
 
     // Show connecting status
     updateConnectionStatus("connecting");
   } else {
+    console.log('使用现有连接:', {
+      dataChannel: peerConnections[peer.id].dataChannel ? '存在' : '不存在',
+      dataChannelState: peerConnections[peer.id].dataChannel?.readyState,
+      connectionState: peerConnections[peer.id].connectionState
+    });
+    
     // Check if data channel is already open
     const dataChannel = peerConnections[peer.id].dataChannel;
     if (dataChannel && dataChannel.readyState === "open") {
@@ -924,20 +1018,40 @@ function showPeersList() {
 // Send selected files to the selected peer
 async function sendFiles() {
   if (!selectedPeer || selectedFiles.size === 0) {
+    console.log('无法发送文件:', { 
+      selectedPeer: selectedPeer ? selectedPeer.id : null,
+      selectedFilesSize: selectedFiles.size 
+    });
     return;
   }
 
-  const dataChannel = peerConnections[selectedPeer.id].dataChannel;
-
-  // Check if the data channel is open
-  if (dataChannel.readyState !== "open") {
-    showToast("Connection not ready. Please try again.");
+  const dataChannel = peerConnections[selectedPeer.id]?.dataChannel;
+  if (!dataChannel || dataChannel.readyState !== "open") {
+    console.log('数据通道未就绪:', {
+      dataChannel: dataChannel ? '存在' : '不存在',
+      dataChannelState: dataChannel?.readyState
+    });
+    showToast("连接未就绪，请稍后重试");
     return;
   }
 
+  console.log('开始发送文件:', {
+    filesCount: selectedFiles.size,
+    peerId: selectedPeer.id
+  });
+
+  // 转换为数组以便遍历
+  const filesToSend = Array.from(selectedFiles);
+  
   // Process each file
-  for (const file of selectedFiles) {
+  for (const file of filesToSend) {
     try {
+      console.log('正在发送文件:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+
       // Read the file as base64
       const base64Data = await readFileAsBase64(file);
 
@@ -980,18 +1094,35 @@ async function sendFiles() {
         timestamp: new Date().toISOString(),
       });
 
+      console.log('文件发送完成:', {
+        fileName: file.name,
+        fileSize: file.size
+      });
+
       showToast(`i18n:fileSentSuccessfully:${file.name}`);
     } catch (error) {
-      console.error("Error sending file:", error);
+      console.error("发送文件时出错:", error);
       showToast(`i18n:errorSendingFile:${error.message}`);
     }
   }
 
-  // Reset the file input and clear the file list
+  // 重置文件选择状态
+  console.log('重置文件选择状态');
   fileInput.value = "";
   selectedFiles.clear();
-  fileList.innerHTML = ""; // 清空文件列表的 DOM 元素
-  sendFileBtn.disabled = true;
+  fileList.innerHTML = "";
+  
+  // 强制更新按钮状态
+  console.log('更新发送按钮状态');
+  updateSendButton();
+  
+  // 确保数据通道仍然保持打开状态
+  if (dataChannel.readyState === "open") {
+    console.log('数据通道保持打开状态');
+    sendFileBtn.disabled = true;
+    sendFileBtn.style.backgroundColor = 'var(--gray-300)';
+    sendFileBtn.style.cursor = 'not-allowed';
+  }
 }
 
 // Add a file to the transfer history
