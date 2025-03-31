@@ -149,25 +149,30 @@ function createFileItem(file) {
     return fileItem;
 }
 
-// 更新发送按钮状态
-function updateSendButton() {
-    const isConnected = selectedPeer && 
-        peerConnections[selectedPeer.id] && 
-        peerConnections[selectedPeer.id].dataChannel && 
-        peerConnections[selectedPeer.id].dataChannel.readyState === "open";
-    
-    sendFileBtn.disabled = selectedFiles.size === 0 || !isConnected;
-}
-
 // 处理文件选择
 function handleFileSelect(files) {
-    Array.from(files).forEach(file => {
-        if (!selectedFiles.has(file)) {
-            selectedFiles.add(file);
-            fileList.appendChild(createFileItem(file));
-        }
-    });
-    updateSendButton();
+  // 清空之前的文件列表
+  fileList.innerHTML = "";
+  selectedFiles.clear();
+  
+  // 添加新选择的文件
+  Array.from(files).forEach(file => {
+    selectedFiles.add(file);
+    fileList.appendChild(createFileItem(file));
+  });
+  
+  // 更新发送按钮状态
+  updateSendButton();
+}
+
+// 更新发送按钮状态
+function updateSendButton() {
+  const isConnected = selectedPeer && 
+    peerConnections[selectedPeer.id] && 
+    peerConnections[selectedPeer.id].dataChannel && 
+    peerConnections[selectedPeer.id].dataChannel.readyState === "open";
+  
+  sendFileBtn.disabled = selectedFiles.size === 0 || !isConnected;
 }
 
 // 文件输入框变化事件
@@ -442,32 +447,55 @@ function createPeerConnection(peerId, turnOnly = false) {
       receivedSize = 0;
       fileInfo = data.info;
 
+      console.log(`开始接收文件: ${fileInfo.name}, 大小: ${fileInfo.size}`);
       showToast(`i18n:receivingFile:${fileInfo.name}`);
     } else if (data.type === "file-data") {
       // Collect file chunks
       receivedData.push(data.chunk);
       receivedSize += data.chunk.length;
 
+      console.log(`接收文件块: ${fileInfo.name}, 当前大小: ${receivedSize}/${fileInfo.size}`);
+
       // Check if file transfer is complete
       if (receivedSize === fileInfo.size) {
-        // Combine chunks and create file
-        const fileData = receivedData.join("");
-        const fileBlob = base64ToBlob(fileData, fileInfo.type);
+        console.log(`文件接收完成: ${fileInfo.name}`);
+        try {
+          // Combine chunks and create file
+          const fileData = receivedData.join("");
+          const fileBlob = base64ToBlob(fileData, fileInfo.type);
 
-        // Add to history and show preview
-        addFileToHistory({
-          name: fileInfo.name,
-          size: fileInfo.size,
-          type: fileInfo.type,
-          data: fileBlob,
-          from: peerId,
-          direction: "received",
-          timestamp: new Date().toISOString(),
-        });
+          // Verify file size
+          if (fileBlob.size !== fileInfo.size) {
+            console.error(`文件大小不匹配: 预期 ${fileInfo.size}, 实际 ${fileBlob.size}`);
+            showToast(`i18n:errorSendingFile:文件大小不匹配`);
+            return;
+          }
 
-        showFilePreview(fileBlob, fileInfo);
-        showToast(`i18n:fileReceived:${fileInfo.name}`);
+          // Add to history and show preview
+          addFileToHistory({
+            name: fileInfo.name,
+            size: fileInfo.size,
+            type: fileInfo.type,
+            data: fileBlob,
+            from: peerId,
+            direction: "received",
+            timestamp: new Date().toISOString(),
+          });
 
+          showFilePreview(fileBlob, fileInfo);
+          showToast(`i18n:fileReceived:${fileInfo.name}`);
+        } catch (error) {
+          console.error(`处理文件时出错: ${fileInfo.name}`, error);
+          showToast(`i18n:errorSendingFile:${error.message}`);
+        } finally {
+          // Reset for next transfer
+          receivedData = [];
+          receivedSize = 0;
+          fileInfo = null;
+        }
+      } else if (receivedSize > fileInfo.size) {
+        console.error(`文件大小超出预期: ${fileInfo.name}, 当前大小: ${receivedSize}`);
+        showToast(`i18n:errorSendingFile:文件大小超出预期`);
         // Reset for next transfer
         receivedData = [];
         receivedSize = 0;
