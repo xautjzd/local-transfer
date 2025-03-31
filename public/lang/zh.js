@@ -43,6 +43,7 @@ const zh = {
   fileReceived: "{0} 文件接收成功",
   receivingFile: "正在接收文件 {0}...",
   newMessageFrom: "来自 {0} 的新消息",
+  noFileHistory: "暂无历史记录",
 };
 
 window.zh = zh;

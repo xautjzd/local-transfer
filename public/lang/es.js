@@ -42,6 +42,7 @@ const es = {
   connectionTroubleshootingCorporateNetwork: "Algunas redes corporativas o públicas pueden bloquear las conexiones peer-to-peer",
   connectionTroubleshootingVPN: "Intente desactivar los servicios VPN o proxy si los está utilizando",
   connectionTroubleshootingMobile: "Si está en móvil, intente cambiar a WiFi en lugar de datos móviles",
+  noFileHistory: "Sin historial de archivos",
 };
 
 window.es = es;

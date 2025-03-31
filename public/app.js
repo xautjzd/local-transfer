@@ -986,47 +986,69 @@ function updateFileHistoryDisplay(peerId) {
   // 清空当前历史显示
   fileHistory.innerHTML = "";
 
-  // 如果没有该对等方的历史记录，直接返回
-  if (!peerFileHistory[peerId]) return;
+  // 如果没有该对等方的历史记录，显示空状态
+  if (!peerFileHistory[peerId]) {
+    fileHistory.innerHTML = `
+      <div class="empty-history">
+        <i class="fas fa-history"></i>
+        <p>${__("noFileHistory")}</p>
+      </div>
+    `;
+    return;
+  }
 
   // 显示特定对等方的文件历史
   peerFileHistory[peerId].forEach((file) => {
     const historyItem = document.createElement("div");
-    historyItem.className = "history-item";
+    historyItem.className = `history-item ${file.direction}`;
 
-    // Determine file icon based on type
-    let fileIcon = "📄";
-    if (file.type.startsWith("image/")) {
-      fileIcon = "🖼️";
-    } else if (file.type.startsWith("video/")) {
-      fileIcon = "🎬";
-    } else if (file.type.startsWith("audio/")) {
-      fileIcon = "🎵";
-    }
-
+    // 获取文件类型图标
+    const fileIcon = getFileTypeIcon(file);
     const formattedSize = formatFileSize(file.size);
     const formattedTime = new Date(file.timestamp).toLocaleTimeString();
+    const formattedDate = new Date(file.timestamp).toLocaleDateString();
 
     historyItem.innerHTML = `
-      <div class="history-item-info">
-        <div class="file-type-icon">${fileIcon}</div>
-        <div class="file-details">
-          <div class="file-name">${file.name}</div>
+      <div class="history-item-content">
+        <div class="file-icon-wrapper">
+          <i class="fas ${fileIcon}"></i>
+        </div>
+        <div class="file-info">
+          <div class="file-name" title="${file.name}">${file.name}</div>
           <div class="file-meta">
-            ${formattedSize} · ${formattedTime} · 
-            ${file.direction === "sent" ? __("sent") : __("received")}
+            <span class="file-size">${formattedSize}</span>
+            <span class="file-date">${formattedDate} ${formattedTime}</span>
+            <span class="file-direction ${file.direction}">
+              <i class="fas ${file.direction === 'sent' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+              ${file.direction === "sent" ? __("sent") : __("received")}
+            </span>
           </div>
         </div>
+        <div class="file-actions">
+          <button class="action-btn preview-btn" title="${__("preview")}">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="action-btn download-btn" title="${__("download")}">
+            <i class="fas fa-download"></i>
+          </button>
+        </div>
       </div>
-      <div class="file-action">${__("view")}</div>
     `;
 
-    historyItem.querySelector(".file-action").addEventListener("click", () => {
+    // 添加预览按钮事件
+    const previewBtn = historyItem.querySelector(".preview-btn");
+    previewBtn.addEventListener("click", () => {
       showFilePreview(file.data, {
         name: file.name,
         size: file.size,
         type: file.type,
       });
+    });
+
+    // 添加下载按钮事件
+    const downloadBtn = historyItem.querySelector(".download-btn");
+    downloadBtn.addEventListener("click", () => {
+      saveFile(file.data, file.name);
     });
 
     fileHistory.appendChild(historyItem);

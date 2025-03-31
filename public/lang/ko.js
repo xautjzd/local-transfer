@@ -43,6 +43,7 @@ const ko = {
   fileReceived: "파일 {0} 수신 완료",
   receivingFile: "{0} 수신 중...",
   newMessageFrom: "{0}로부터 새 메시지",
+  noFileHistory: "파일 기록이 없습니다",
 };
 
 window.ko = ko;

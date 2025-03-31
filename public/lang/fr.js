@@ -35,6 +35,7 @@ const fr = {
   connectionTroubleshootingCorporateNetwork: "Certains réseaux d'entreprise ou publics peuvent bloquer les connexions pair à pair",
   connectionTroubleshootingVPN: "Essayez de désactiver les services VPN ou proxy si vous les utilisez",
   connectionTroubleshootingMobile: "Sur mobile, essayez de passer au WiFi plutôt qu'aux données cellulaires",
+  noFileHistory: "Aucun historique de fichiers",
   connectionError: "Erreur de connexion : {0}",
   establishingConnection: "Établissement de la connexion...",
   connectionIssueDetected: "Problème de connexion détecté. Tentative de méthode de connexion alternative...",

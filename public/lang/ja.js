@@ -43,6 +43,7 @@ const ja = {
   fileReceived: "ファイル {0} を受信しました",
   receivingFile: "{0} を受信中...",
   newMessageFrom: "{0} からの新しいメッセージ",
+  noFileHistory: "ファイル履歴がありません"
 };
 
 window.ja = ja;

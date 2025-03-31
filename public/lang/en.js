@@ -43,6 +43,7 @@ const en = {
   fileReceived: "File {0} received",
   receivingFile: "Receiving {0}...",
   newMessageFrom: "New message from {0}",
+  noFileHistory: "No file history yet",
 };
 
 window.en = en;
