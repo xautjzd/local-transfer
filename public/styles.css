@@ -311,18 +311,20 @@ main {
 .upload-options {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
-  gap: var(--spacing-md);
+  gap: 0;
   background-color: var(--gray-100);
   padding: var(--spacing-sm);
   border-radius: var(--border-radius-md);
   width: fit-content;
   margin: 0 auto var(--spacing-md);
+  position: relative;
 }
 
 .upload-options input[type="radio"] {
   position: absolute;
   opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .upload-options label {
@@ -330,30 +332,50 @@ main {
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
   font-weight: 500;
   color: var(--gray-500);
-  background-color: transparent;
-  border: 1px solid transparent;
+  background-color: var(--white);
+  border: 1px solid var(--gray-300);
+  min-width: 120px;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.upload-options label:first-child {
+  border-top-left-radius: var(--border-radius-sm);
+  border-bottom-left-radius: var(--border-radius-sm);
+  border-right: none;
+}
+
+.upload-options label:last-child {
+  border-top-right-radius: var(--border-radius-sm);
+  border-bottom-right-radius: var(--border-radius-sm);
+  border-left: none;
 }
 
 .upload-options label i {
   font-size: 1.1rem;
+  transition: transform var(--transition-fast);
 }
 
 .upload-options input[type="radio"]:checked + label {
-  background-color: var(--white);
-  color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: var(--white);
   border-color: var(--primary-color);
   box-shadow: var(--shadow-sm);
 }
 
+.upload-options input[type="radio"]:checked + label i {
+  transform: scale(1.1);
+}
+
 .upload-options input[type="radio"]:not(:checked) + label:hover {
-  background-color: var(--white);
+  background-color: var(--gray-100);
   color: var(--primary-color);
-  border-color: var(--gray-300);
+  border-color: var(--primary-color);
 }
 
 .file-input-container {
@@ -724,6 +746,18 @@ main {
     padding: 0.875rem 1rem;
     font-size: 0.9rem;
   }
+  
+  .upload-options {
+    width: 100%;
+    max-width: 300px;
+    padding: var(--spacing-xs);
+  }
+  
+  .upload-options label {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.9rem;
+    min-width: 100px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -787,30 +821,18 @@ main {
   }
   
   .upload-options {
-    flex-direction: column;
-    width: 100%;
-    gap: var(--spacing-sm);
+    max-width: 100%;
+    padding: var(--spacing-xs);
   }
   
   .upload-options label {
-    width: 100%;
-    justify-content: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.85rem;
+    min-width: 90px;
   }
   
-  .file-input-label {
-    padding: var(--spacing-lg);
-  }
-  
-  .file-icon {
-    font-size: 2.5rem;
-  }
-  
-  .file-text {
-    font-size: 1rem;
-  }
-  
-  .file-hint {
-    font-size: 0.8rem;
+  .upload-options label i {
+    font-size: 0.9rem;
   }
   
   .tab {
@@ -873,12 +895,22 @@ main {
     background-color: var(--gray-200);
   }
   
-  .upload-options input[type="radio"]:checked + label {
+  .upload-options label {
     background-color: var(--gray-100);
+    border-color: var(--gray-300);
+    color: var(--gray-400);
   }
   
-  .file-input-label {
-    background-color: var(--gray-100);
+  .upload-options input[type="radio"]:checked + label {
+    background-color: var(--secondary-color);
+    color: var(--white);
+    border-color: var(--secondary-color);
+  }
+  
+  .upload-options input[type="radio"]:not(:checked) + label:hover {
+    background-color: var(--gray-200);
+    color: var(--secondary-color);
+    border-color: var(--secondary-color);
   }
   
   .file-hint {
