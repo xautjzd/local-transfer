@@ -48,7 +48,7 @@ if (savedUsername) {
 let myInfo = null;
 let selectedPeer = null;
 let peerConnections = {};
-let selectedFiles = [];
+let selectedFiles = new Set();
 // 存储每个对等方的文件历史
 let peerFileHistory = {};
 
@@ -76,6 +76,146 @@ const fileInfoSize = document.getElementById("file-info-size");
 const fileInfoType = document.getElementById("file-info-type");
 const saveFileBtn = document.getElementById("save-file-btn");
 const toast = document.getElementById("toast");
+
+// 文件列表相关变量
+const fileList = document.getElementById('file-list');
+const uploadFileRadio = document.getElementById('upload-file');
+const uploadFolderRadio = document.getElementById('upload-folder');
+
+// 文件类型图标映射
+const fileTypeIcons = {
+    'image': 'fa-file-image',
+    'video': 'fa-file-video',
+    'audio': 'fa-file-audio',
+    'pdf': 'fa-file-pdf',
+    'word': 'fa-file-word',
+    'excel': 'fa-file-excel',
+    'powerpoint': 'fa-file-powerpoint',
+    'archive': 'fa-file-archive',
+    'default': 'fa-file-alt'
+};
+
+// 获取文件类型图标
+function getFileTypeIcon(file) {
+    const type = file.type;
+    if (type.startsWith('image/')) return fileTypeIcons.image;
+    if (type.startsWith('video/')) return fileTypeIcons.video;
+    if (type.startsWith('audio/')) return fileTypeIcons.audio;
+    if (type === 'application/pdf') return fileTypeIcons.pdf;
+    if (type.includes('word')) return fileTypeIcons.word;
+    if (type.includes('excel') || type.includes('spreadsheet')) return fileTypeIcons.excel;
+    if (type.includes('powerpoint') || type.includes('presentation')) return fileTypeIcons.powerpoint;
+    if (type.includes('zip') || type.includes('rar') || type.includes('tar')) return fileTypeIcons.archive;
+    return fileTypeIcons.default;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 创建文件项
+function createFileItem(file) {
+    const fileItem = document.createElement('div');
+    fileItem.className = 'file-item';
+    fileItem.dataset.fileId = file.name; // 使用文件名作为唯一标识
+    
+    const icon = getFileTypeIcon(file);
+    const size = formatFileSize(file.size);
+    
+    fileItem.innerHTML = `
+        <i class="fas ${icon} file-icon"></i>
+        <div class="file-info">
+            <div class="file-name">${file.name}</div>
+            <div class="file-size">${size}</div>
+        </div>
+        <button class="remove-file" aria-label="删除文件">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // 添加删除按钮事件监听
+    const removeBtn = fileItem.querySelector('.remove-file');
+    removeBtn.addEventListener('click', () => {
+        selectedFiles.delete(file);
+        fileItem.remove();
+        updateSendButton();
+    });
+    
+    return fileItem;
+}
+
+// 更新发送按钮状态
+function updateSendButton() {
+    const isConnected = selectedPeer && 
+        peerConnections[selectedPeer.id] && 
+        peerConnections[selectedPeer.id].dataChannel && 
+        peerConnections[selectedPeer.id].dataChannel.readyState === "open";
+    
+    sendFileBtn.disabled = selectedFiles.size === 0 || !isConnected;
+}
+
+// 处理文件选择
+function handleFileSelect(files) {
+    Array.from(files).forEach(file => {
+        if (!selectedFiles.has(file)) {
+            selectedFiles.add(file);
+            fileList.appendChild(createFileItem(file));
+        }
+    });
+    updateSendButton();
+}
+
+// 文件输入框变化事件
+fileInput.addEventListener('change', (e) => {
+    handleFileSelect(e.target.files);
+    // 清空输入框，允许重复选择同一文件
+    e.target.value = '';
+});
+
+// 拖放文件处理
+fileDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileDropArea.classList.add('drag-over');
+});
+
+fileDropArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileDropArea.classList.remove('drag-over');
+});
+
+fileDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileDropArea.classList.remove('drag-over');
+    
+    const files = e.dataTransfer.files;
+    handleFileSelect(files);
+});
+
+// 上传类型切换
+uploadFileRadio.addEventListener('change', () => {
+    fileInput.setAttribute('webkitdirectory', 'false');
+    fileInput.setAttribute('directory', 'false');
+});
+
+uploadFolderRadio.addEventListener('change', () => {
+    fileInput.setAttribute('webkitdirectory', 'true');
+    fileInput.setAttribute('directory', 'true');
+});
+
+// 初始化时根据默认选项设置属性
+if (uploadFolderRadio.checked) {
+    fileInput.setAttribute("webkitdirectory", "");
+} else {
+    fileInput.removeAttribute("webkitdirectory");
+}
 
 // Initialize when connected to the server
 socket.on("init", (data) => {
@@ -284,7 +424,7 @@ function createPeerConnection(peerId, turnOnly = false) {
     // Update UI if this is the selected peer
     if (selectedPeer && selectedPeer.id === peerId) {
       updateConnectionStatus("connected");
-      sendFileBtn.disabled = selectedFiles.length === 0;
+      sendFileBtn.disabled = selectedFiles.size === 0;
     }
   };
 
@@ -422,7 +562,7 @@ function createPeerConnection(peerId, turnOnly = false) {
       // Update UI if this is the selected peer
       if (selectedPeer && selectedPeer.id === peerId) {
         updateConnectionStatus("connected");
-        sendFileBtn.disabled = selectedFiles.length === 0;
+        sendFileBtn.disabled = selectedFiles.size === 0;
       }
     };
     incomingChannel.onclose = () =>
@@ -666,7 +806,7 @@ function selectPeer(peer) {
 
   // Reset the file input
   fileInput.value = "";
-  selectedFiles = [];
+  selectedFiles.clear();
   sendFileBtn.disabled = true;
 }
 
@@ -753,70 +893,9 @@ function showPeersList() {
   peersList.parentElement.classList.remove("hidden");
 }
 
-// Handle file selection
-function handleFileSelect(files) {
-  selectedFiles = Array.from(files);
-
-  // Only enable send button if files are selected AND connection is ready
-  const isConnected =
-    selectedPeer &&
-    peerConnections[selectedPeer.id] &&
-    peerConnections[selectedPeer.id].dataChannel &&
-    peerConnections[selectedPeer.id].dataChannel.readyState === "open";
-
-  sendFileBtn.disabled = selectedFiles.length === 0 || !isConnected;
-
-  if (selectedFiles.length > 0) {
-    // Display selected files in the drop area
-    const fileListHtml = selectedFiles
-      .map((file, index) => {
-        return `<div class="selected-file">
-              <span class="file-icon">📄</span>
-              <span class="file-name">${file.name}</span>
-              <span class="file-size">(${formatFileSize(file.size)})</span>
-              <button class="remove-file-btn" data-index="${index}">Remove</button>
-            </div>`;
-      })
-      .join("");
-
-    // Add the file list to the drop area
-    const fileInputContainer = fileDropArea.querySelector(
-      ".file-input-container"
-    );
-    const existingFileList = fileDropArea.querySelector(".selected-files-list");
-
-    if (existingFileList) {
-      existingFileList.innerHTML = fileListHtml;
-    } else {
-      const filesList = document.createElement("div");
-      filesList.className = "selected-files-list";
-      filesList.innerHTML = fileListHtml;
-      fileDropArea.appendChild(filesList);
-    }
-
-    // Add event listeners for remove buttons
-    document.querySelectorAll(".remove-file-btn").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const index = e.target.dataset.index;
-        selectedFiles.splice(index, 1);
-        handleFileSelect(selectedFiles);
-      });
-    });
-
-    const fileNames = selectedFiles.map((file) => file.name).join(", ");
-    //showToast(`Selected ${selectedFiles.length} file(s): ${fileNames}`);
-  } else {
-    // Remove the file list if no files are selected
-    const existingFileList = fileDropArea.querySelector(".selected-files-list");
-    if (existingFileList) {
-      existingFileList.remove();
-    }
-  }
-}
-
 // Send selected files to the selected peer
 async function sendFiles() {
-  if (!selectedPeer || selectedFiles.length === 0) {
+  if (!selectedPeer || selectedFiles.size === 0) {
     return;
   }
 
@@ -882,14 +961,8 @@ async function sendFiles() {
 
   // Reset the file input
   fileInput.value = "";
-  selectedFiles = [];
+  selectedFiles.clear();
   sendFileBtn.disabled = true;
-
-  // Remove the file list from the drop area
-  //   const existingFileList = fileDropArea.querySelector('.selected-files-list');
-  //   if (existingFileList) {
-  //     existingFileList.remove();
-  //   }
 }
 
 // Add a file to the transfer history
@@ -1178,7 +1251,7 @@ function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
       statusElement.innerHTML = `<span class="status-icon connected">✅</span> ${__(
         "connected"
       )}`;
-      sendFileBtn.disabled = selectedFiles.length === 0;
+      sendFileBtn.disabled = selectedFiles.size === 0;
       break;
     case "disconnected":
       statusElement.innerHTML = `<span class="status-icon disconnected">❌</span> ${__(

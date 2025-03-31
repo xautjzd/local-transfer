@@ -937,3 +937,195 @@ main {
     background-color: var(--gray-100);
   }
 }
+
+/* 文件列表样式 */
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
+}
+
+.file-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.file-list::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 3px;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+.file-list::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.file-item:hover {
+  background-color: var(--gray-100);
+  border-color: var(--gray-300);
+  transform: translateX(2px);
+}
+
+.file-item .file-icon {
+  font-size: 1.2rem;
+  color: var(--gray-400);
+  width: 24px;
+  text-align: center;
+}
+
+.file-item .file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-item .file-name {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-item .file-size {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.file-item .remove-file {
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+  opacity: 0;
+}
+
+.file-item:hover .remove-file {
+  opacity: 1;
+}
+
+.file-item .remove-file:hover {
+  color: var(--error-color);
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+/* 文件类型图标颜色 */
+.file-item .fa-file-alt { color: #3498db; }
+.file-item .fa-file-image { color: #2ecc71; }
+.file-item .fa-file-video { color: #e74c3c; }
+.file-item .fa-file-audio { color: #f39c12; }
+.file-item .fa-file-pdf { color: #e74c3c; }
+.file-item .fa-file-word { color: #3498db; }
+.file-item .fa-file-excel { color: #2ecc71; }
+.file-item .fa-file-powerpoint { color: #f39c12; }
+.file-item .fa-file-archive { color: #9b59b6; }
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .file-list {
+    max-height: 250px;
+  }
+  
+  .file-item {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .file-item .file-icon {
+    font-size: 1.1rem;
+  }
+  
+  .file-item .file-name {
+    font-size: 0.85rem;
+  }
+  
+  .file-item .file-size {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .file-list {
+    max-height: 200px;
+  }
+  
+  .file-item {
+    padding: var(--spacing-xs);
+  }
+  
+  .file-item .file-icon {
+    font-size: 1rem;
+  }
+  
+  .file-item .file-name {
+    font-size: 0.8rem;
+  }
+  
+  .file-item .file-size {
+    font-size: 0.7rem;
+  }
+  
+  .file-item .remove-file {
+    opacity: 1;
+    padding: var(--spacing-xs);
+  }
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .file-list::-webkit-scrollbar-track {
+    background: var(--gray-200);
+  }
+  
+  .file-list::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+  }
+  
+  .file-list::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+  }
+  
+  .file-item {
+    background-color: var(--gray-100);
+    border-color: var(--gray-300);
+  }
+  
+  .file-item:hover {
+    background-color: var(--gray-200);
+    border-color: var(--gray-400);
+  }
+  
+  .file-item .file-name {
+    color: var(--text-color);
+  }
+  
+  .file-item .file-size {
+    color: var(--gray-500);
+  }
+  
+  .file-item .remove-file {
+    color: var(--gray-500);
+  }
+  
+  .file-item .remove-file:hover {
+    background-color: rgba(231, 76, 60, 0.2);
+  }
+}
