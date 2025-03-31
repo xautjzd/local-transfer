@@ -363,6 +363,26 @@ main {
   margin: 0 auto;
 }
 
+.file-input-container input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-input-container input[type="file"]::-webkit-file-upload-button {
+  visibility: hidden;
+}
+
+.file-input-container input[type="file"]::file-selector-button {
+  visibility: hidden;
+}
+
 .file-input-label {
   display: flex;
   flex-direction: column;
