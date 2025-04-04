@@ -82,8 +82,8 @@ const fileList = document.getElementById('file-list');
 const uploadFileRadio = document.getElementById('upload-file');
 const uploadFolderRadio = document.getElementById('upload-folder');
 
-// 文件类型图标映射
-const fileTypeIcons = {
+// 常量定义
+const FILE_TYPE_ICONS = {
     'image': 'fa-file-image',
     'video': 'fa-file-video',
     'audio': 'fa-file-audio',
@@ -95,193 +95,617 @@ const fileTypeIcons = {
     'default': 'fa-file-alt'
 };
 
-// 获取文件类型图标
-function getFileTypeIcon(file) {
-    const type = file.type;
-    if (type.startsWith('image/')) return fileTypeIcons.image;
-    if (type.startsWith('video/')) return fileTypeIcons.video;
-    if (type.startsWith('audio/')) return fileTypeIcons.audio;
-    if (type === 'application/pdf') return fileTypeIcons.pdf;
-    if (type.includes('word')) return fileTypeIcons.word;
-    if (type.includes('excel') || type.includes('spreadsheet')) return fileTypeIcons.excel;
-    if (type.includes('powerpoint') || type.includes('presentation')) return fileTypeIcons.powerpoint;
-    if (type.includes('zip') || type.includes('rar') || type.includes('tar')) return fileTypeIcons.archive;
-    return fileTypeIcons.default;
-}
+const CHUNK_SIZE = 16384; // 16KB chunks
+const CONNECTION_TIMEOUT = 15000; // 15 seconds
+const ANSWER_TIMEOUT = 20000; // 20 seconds
 
-// 格式化文件大小
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+// 工具函数
+const utils = {
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    },
 
-// 创建文件项
-function createFileItem(file) {
-    const fileItem = document.createElement('div');
-    fileItem.className = 'file-item';
-    fileItem.dataset.fileId = file.name; // 使用文件名作为唯一标识
-    
-    const icon = getFileTypeIcon(file);
-    const size = formatFileSize(file.size);
-    
-    fileItem.innerHTML = `
-        <i class="fas ${icon} file-icon"></i>
-        <div class="file-info">
-            <div class="file-name">${file.name}</div>
-            <div class="file-size">${size}</div>
-        </div>
-        <button class="remove-file" aria-label="删除文件">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    // 添加删除按钮事件监听
-    const removeBtn = fileItem.querySelector('.remove-file');
-    removeBtn.addEventListener('click', () => {
-        selectedFiles.delete(file);
-        fileItem.remove();
-        updateSendButton();
-    });
-    
-    return fileItem;
-}
+    getFileTypeIcon(file) {
+        const type = file.type;
+        if (type.startsWith('image/')) return FILE_TYPE_ICONS.image;
+        if (type.startsWith('video/')) return FILE_TYPE_ICONS.video;
+        if (type.startsWith('audio/')) return FILE_TYPE_ICONS.audio;
+        if (type === 'application/pdf') return FILE_TYPE_ICONS.pdf;
+        if (type.includes('word')) return FILE_TYPE_ICONS.word;
+        if (type.includes('excel') || type.includes('spreadsheet')) return FILE_TYPE_ICONS.excel;
+        if (type.includes('powerpoint') || type.includes('presentation')) return FILE_TYPE_ICONS.powerpoint;
+        if (type.includes('zip') || type.includes('rar') || type.includes('tar')) return FILE_TYPE_ICONS.archive;
+        return FILE_TYPE_ICONS.default;
+    },
 
-// 处理文件选择
-function handleFileSelect(files) {
-  // 如果没有文件，直接返回
-  if (!files || files.length === 0) {
-    console.log('没有选择文件，跳过处理');
-    return;
-  }
+    getInitials(name) {
+        return name.charAt(0);
+    },
 
-  console.log('处理文件选择:', {
-    filesCount: files.length,
-    selectedPeer: selectedPeer ? selectedPeer.id : null,
-    connection: peerConnections[selectedPeer?.id] ? '存在' : '不存在',
-    dataChannel: peerConnections[selectedPeer?.id]?.dataChannel ? '存在' : '不存在',
-    dataChannelState: peerConnections[selectedPeer?.id]?.dataChannel?.readyState,
-    currentSelectedFilesSize: selectedFiles.size
-  });
+    readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(",")[1];
+                resolve(base64);
+            };
+            reader.onerror = () => reject(new Error("Error reading file"));
+            reader.readAsDataURL(file);
+        });
+    },
 
-  // 清空之前的文件列表
-  fileList.innerHTML = "";
-  selectedFiles.clear();
-  
-  // 添加新选择的文件
-  Array.from(files).forEach(file => {
-    console.log('添加文件:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type
-    });
-    selectedFiles.add(file);
-    fileList.appendChild(createFileItem(file));
-  });
-  
-  console.log('文件选择完成:', {
-    selectedFilesSize: selectedFiles.size,
-    fileListChildrenCount: fileList.children.length
-  });
-  
-  // 更新发送按钮状态
-  updateSendButton();
-}
-
-// 更新发送按钮状态
-function updateSendButton() {
-  const isConnected = selectedPeer && 
-    peerConnections[selectedPeer.id] && 
-    peerConnections[selectedPeer.id].dataChannel && 
-    peerConnections[selectedPeer.id].dataChannel.readyState === "open";
-  
-  console.log('更新发送按钮状态:', {
-    selectedFilesSize: selectedFiles.size,
-    selectedPeer: selectedPeer ? selectedPeer.id : null,
-    peerConnection: peerConnections[selectedPeer?.id] ? '存在' : '不存在',
-    dataChannel: peerConnections[selectedPeer?.id]?.dataChannel ? '存在' : '不存在',
-    dataChannelState: peerConnections[selectedPeer?.id]?.dataChannel?.readyState,
-    isConnected
-  });
-  
-  const shouldDisable = selectedFiles.size === 0 || !isConnected;
-  console.log('按钮状态:', { shouldDisable });
-  
-  sendFileBtn.disabled = shouldDisable;
-  
-  // 强制更新按钮样式
-  if (!shouldDisable) {
-    sendFileBtn.style.backgroundColor = 'var(--primary-color)';
-    sendFileBtn.style.cursor = 'pointer';
-  } else {
-    sendFileBtn.style.backgroundColor = 'var(--gray-300)';
-    sendFileBtn.style.cursor = 'not-allowed';
-  }
-}
-
-// 文件输入框变化事件
-fileInput.addEventListener('change', (e) => {
-  console.log('文件输入框变化:', {
-    filesCount: e.target.files.length,
-    selectedFilesSize: selectedFiles.size
-  });
-  
-  if (e.target.files && e.target.files.length > 0) {
-    handleFileSelect(e.target.files);
-  }
-  
-  // 清空输入框，允许重复选择同一文件
-  e.target.value = '';
-});
-
-// 拖放文件处理
-fileDropArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.add('drag-over');
-});
-
-fileDropArea.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.remove('drag-over');
-});
-
-fileDropArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.remove('drag-over');
-    
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      console.log('拖放文件:', {
-        filesCount: files.length,
-        selectedFilesSize: selectedFiles.size
-      });
-      
-      handleFileSelect(files);
+    base64ToBlob(base64, type) {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: type });
     }
-});
+};
 
-// 上传类型切换
-uploadFileRadio.addEventListener('change', () => {
-    fileInput.setAttribute('webkitdirectory', 'false');
-    fileInput.setAttribute('directory', 'false');
-});
+// 文件处理类
+class FileHandler {
+    constructor() {
+        this.selectedFiles = new Set();
+        this.peerFileHistory = {};
+    }
 
-uploadFolderRadio.addEventListener('change', () => {
-    fileInput.setAttribute('webkitdirectory', 'true');
-    fileInput.setAttribute('directory', 'true');
-});
+    createFileItem(file) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.dataset.fileId = file.name;
+        
+        const icon = utils.getFileTypeIcon(file);
+        const size = utils.formatFileSize(file.size);
+        
+        fileItem.innerHTML = `
+            <i class="fas ${icon} file-icon"></i>
+            <div class="file-info">
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${size}</div>
+            </div>
+            <button class="remove-file" aria-label="删除文件">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        const removeBtn = fileItem.querySelector('.remove-file');
+        removeBtn.addEventListener('click', () => {
+            this.selectedFiles.delete(file);
+            fileItem.remove();
+            this.updateSendButton();
+        });
+        
+        return fileItem;
+    }
 
-// 初始化时根据默认选项设置属性
-if (uploadFolderRadio.checked) {
-    fileInput.setAttribute("webkitdirectory", "");
-} else {
-    fileInput.removeAttribute("webkitdirectory");
+    handleFileSelect(files) {
+        if (!files || files.length === 0) return;
+
+        fileList.innerHTML = "";
+        this.selectedFiles.clear();
+        
+        Array.from(files).forEach(file => {
+            this.selectedFiles.add(file);
+            fileList.appendChild(this.createFileItem(file));
+        });
+        
+        this.updateSendButton();
+    }
+
+    updateSendButton() {
+        const isConnected = selectedPeer && 
+            peerConnections[selectedPeer.id]?.dataChannel?.readyState === "open";
+        
+        const shouldDisable = this.selectedFiles.size === 0 || !isConnected;
+        sendFileBtn.disabled = shouldDisable;
+        
+        if (!shouldDisable) {
+            sendFileBtn.style.backgroundColor = 'var(--primary-color)';
+            sendFileBtn.style.cursor = 'pointer';
+        } else {
+            sendFileBtn.style.backgroundColor = 'var(--gray-300)';
+            sendFileBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    async sendFiles() {
+        if (!selectedPeer || this.selectedFiles.size === 0) return;
+
+        const dataChannel = peerConnections[selectedPeer.id]?.dataChannel;
+        if (!dataChannel || dataChannel.readyState !== "open") {
+            showToast("连接未就绪，请稍后重试");
+            return;
+        }
+
+        const filesToSend = Array.from(this.selectedFiles);
+        
+        for (const file of filesToSend) {
+            try {
+                const base64Data = await utils.readFileAsBase64(file);
+
+                dataChannel.send(JSON.stringify({
+                    type: "file-info",
+                    info: {
+                        name: file.name,
+                        size: base64Data.length,
+                        type: file.type,
+                    },
+                }));
+
+                let offset = 0;
+                while (offset < base64Data.length) {
+                    const chunk = base64Data.slice(offset, offset + CHUNK_SIZE);
+                    dataChannel.send(JSON.stringify({
+                        type: "file-data",
+                        chunk: chunk,
+                    }));
+                    offset += CHUNK_SIZE;
+                }
+
+                this.addFileToHistory({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    data: file,
+                    to: selectedPeer.id,
+                    direction: "sent",
+                    timestamp: new Date().toISOString(),
+                });
+
+                showToast(`i18n:fileSentSuccessfully:${file.name}`);
+            } catch (error) {
+                console.error("发送文件时出错:", error);
+                showToast(`i18n:errorSendingFile:${error.message}`);
+            }
+        }
+
+        this.resetFileSelection();
+    }
+
+    resetFileSelection() {
+        fileInput.value = "";
+        this.selectedFiles.clear();
+        fileList.innerHTML = "";
+        this.updateSendButton();
+    }
+
+    addFileToHistory(file) {
+        const peerId = file.direction === "sent" ? file.to : file.from;
+        if (!this.peerFileHistory[peerId]) {
+            this.peerFileHistory[peerId] = [];
+        }
+        this.peerFileHistory[peerId].unshift(file);
+
+        if (selectedPeer && selectedPeer.id === peerId) {
+            this.updateFileHistoryDisplay(peerId);
+        }
+    }
+
+    updateFileHistoryDisplay(peerId) {
+        fileHistory.innerHTML = "";
+
+        if (!this.peerFileHistory[peerId]) {
+            fileHistory.innerHTML = `
+                <div class="empty-history">
+                    <i class="fas fa-history"></i>
+                    <p>${__("noFileHistory")}</p>
+                </div>
+            `;
+            return;
+        }
+
+        this.peerFileHistory[peerId].forEach(file => {
+            const historyItem = this.createHistoryItem(file);
+            fileHistory.appendChild(historyItem);
+        });
+    }
+
+    createHistoryItem(file) {
+        const historyItem = document.createElement("div");
+        historyItem.className = `history-item ${file.direction}`;
+
+        const fileIcon = utils.getFileTypeIcon(file);
+        const formattedSize = utils.formatFileSize(file.size);
+        const formattedTime = new Date(file.timestamp).toLocaleTimeString();
+        const formattedDate = new Date(file.timestamp).toLocaleDateString();
+
+        historyItem.innerHTML = `
+            <div class="history-item-content">
+                <div class="file-icon-wrapper">
+                    <i class="fas ${fileIcon}"></i>
+                </div>
+                <div class="file-info">
+                    <div class="file-name" title="${file.name}">${file.name}</div>
+                    <div class="file-meta">
+                        <span class="file-size">${formattedSize}</span>
+                        <span class="file-date">${formattedDate} ${formattedTime}</span>
+                        <span class="file-direction ${file.direction}">
+                            <i class="fas ${file.direction === 'sent' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                            ${file.direction === "sent" ? __("sent") : __("received")}
+                        </span>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="action-btn preview-btn" title="${__("preview")}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn download-btn" title="${__("download")}">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.addHistoryItemEventListeners(historyItem, file);
+        return historyItem;
+    }
+
+    addHistoryItemEventListeners(historyItem, file) {
+        const previewBtn = historyItem.querySelector(".preview-btn");
+        previewBtn.addEventListener("click", () => {
+            showFilePreview(file.data, {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+            });
+        });
+
+        const downloadBtn = historyItem.querySelector(".download-btn");
+        downloadBtn.addEventListener("click", () => {
+            saveFile(file.data, file.name);
+        });
+    }
 }
+
+// 连接管理类
+class ConnectionManager {
+    constructor() {
+        this.peerConnections = {};
+        this.selectedPeer = null;
+        this.currentFileInfo = null;
+        this.receivedData = {};
+        this.connectionAttempts = {}; // 添加连接尝试计数
+    }
+
+    createPeerConnection(peerId, turnOnly = false) {
+        // 重置连接尝试计数
+        this.connectionAttempts[peerId] = 0;
+
+        const iceServers = this.getIceServers(turnOnly);
+        console.log('创建新的对等连接:', {
+            peerId,
+            turnOnly,
+            iceServers
+        });
+
+        const peerConnection = new RTCPeerConnection({
+            iceServers: iceServers,
+            iceCandidatePoolSize: 10,
+            iceTransportPolicy: turnOnly ? 'relay' : 'all'
+        });
+
+        peerConnection.usingTurnOnly = turnOnly;
+        this.setupPeerConnectionHandlers(peerConnection, peerId);
+        
+        // 存储连接
+        this.peerConnections[peerId] = peerConnection;
+        
+        return peerConnection;
+    }
+
+    getIceServers(turnOnly) {
+        // 基础 STUN 服务器配置
+        const iceServers = [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" }
+        ];
+
+        // 如果需要 TURN 服务器，添加它们
+        if (turnOnly) {
+            iceServers.unshift(
+                {
+                    urls: [
+                        "turn:openrelay.metered.ca:443",
+                        "turn:openrelay.metered.ca:80"
+                    ],
+                    username: "openrelayproject",
+                    credential: "openrelayproject",
+                }
+            );
+        }
+
+        return iceServers;
+    }
+
+    setupPeerConnectionHandlers(peerConnection, peerId) {
+        const dataChannel = peerConnection.createDataChannel("fileTransfer", {
+            ordered: true,
+        });
+
+        this.setupDataChannelHandlers(dataChannel, peerId);
+        this.setupIceHandlers(peerConnection, peerId);
+        this.setupConnectionStateHandlers(peerConnection, peerId);
+
+        peerConnection.ondatachannel = (event) => {
+            const incomingChannel = event.channel;
+            this.setupDataChannelHandlers(incomingChannel, peerId);
+        };
+
+        // 存储数据通道
+        peerConnection.dataChannel = dataChannel;
+    }
+
+    setupDataChannelHandlers(dataChannel, peerId) {
+        dataChannel.onopen = () => {
+            console.log(`数据通道已打开: ${peerId}`);
+            if (this.selectedPeer && this.selectedPeer.id === peerId) {
+                updateConnectionStatus("connected");
+                fileHandler.updateSendButton();
+            }
+        };
+
+        dataChannel.onclose = () => {
+            console.log(`数据通道已关闭: ${peerId}`);
+            if (this.selectedPeer && this.selectedPeer.id === peerId) {
+                updateConnectionStatus("disconnected");
+            }
+        };
+
+        dataChannel.onerror = (error) => {
+            console.error(`数据通道错误: ${peerId}`, error);
+        };
+
+        dataChannel.onmessage = (event) => {
+            this.handleDataChannelMessage(event, peerId);
+        };
+    }
+
+    setupIceHandlers(peerConnection, peerId) {
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit("signal", {
+                    to: peerId,
+                    signal: {
+                        type: "candidate",
+                        candidate: event.candidate,
+                    },
+                });
+            }
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log(
+                `ICE connection state with ${peerId}: ${peerConnection.iceConnectionState}`
+            );
+            this.handleIceConnectionStateChange(peerConnection, peerId);
+        };
+    }
+
+    setupConnectionStateHandlers(peerConnection, peerId) {
+        peerConnection.onconnectionstatechange = () => {
+            console.log(
+                `Connection state with ${peerId}: ${peerConnection.connectionState}`
+            );
+            this.handleConnectionStateChange(peerConnection, peerId);
+        };
+    }
+
+    handleIceConnectionStateChange(peerConnection, peerId) {
+        console.log('ICE 连接状态变化:', {
+            peerId,
+            state: peerConnection.iceConnectionState,
+            attempts: this.connectionAttempts[peerId]
+        });
+
+        if (this.selectedPeer && this.selectedPeer.id === peerId) {
+            if (
+                peerConnection.iceConnectionState === "connected" ||
+                peerConnection.iceConnectionState === "completed"
+            ) {
+                updateConnectionStatus("connected");
+                // 重置连接尝试计数
+                this.connectionAttempts[peerId] = 0;
+            } else if (peerConnection.iceConnectionState === "failed") {
+                this.connectionAttempts[peerId] = (this.connectionAttempts[peerId] || 0) + 1;
+                
+                if (this.connectionAttempts[peerId] <= 2) {
+                    console.log("ICE connection failed, restarting...");
+                    peerConnection.restartIce();
+                    updateConnectionStatus("connecting");
+                } else {
+                    console.log("多次 ICE 连接失败，尝试使用 TURN 服务器...");
+                    this.recoverConnection(peerId);
+                }
+            } else if (
+                peerConnection.iceConnectionState === "disconnected" ||
+                peerConnection.iceConnectionState === "closed"
+            ) {
+                updateConnectionStatus("disconnected");
+            }
+        }
+    }
+
+    handleConnectionStateChange(peerConnection, peerId) {
+        console.log('连接状态变化:', {
+            peerId,
+            state: peerConnection.connectionState,
+            attempts: this.connectionAttempts[peerId]
+        });
+
+        if (this.selectedPeer && this.selectedPeer.id === peerId) {
+            if (peerConnection.connectionState === "connected") {
+                updateConnectionStatus("connected");
+                // 重置连接尝试计数
+                this.connectionAttempts[peerId] = 0;
+            } else if (peerConnection.connectionState === "failed") {
+                this.connectionAttempts[peerId] = (this.connectionAttempts[peerId] || 0) + 1;
+                
+                if (this.connectionAttempts[peerId] <= 2) {
+                    console.log("Connection failed, attempting to reconnect...");
+                    this.recoverConnection(peerId);
+                } else {
+                    console.log("多次连接失败，尝试使用 TURN 服务器...");
+                    this.recoverConnection(peerId, true);
+                }
+            } else if (
+                peerConnection.connectionState === "disconnected" ||
+                peerConnection.connectionState === "closed"
+            ) {
+                updateConnectionStatus("disconnected");
+            }
+        }
+    }
+
+    recoverConnection(peerId, forceTurnOnly = false) {
+        console.log('恢复连接:', {
+            peerId,
+            forceTurnOnly,
+            attempts: this.connectionAttempts[peerId]
+        });
+
+        // 关闭现有连接
+        if (this.peerConnections[peerId]) {
+            this.peerConnections[peerId].close();
+            delete this.peerConnections[peerId];
+        }
+
+        // 创建新连接
+        const turnOnly = forceTurnOnly || this.connectionAttempts[peerId] > 2;
+        this.createPeerConnection(peerId, turnOnly);
+        this.initiateConnection(peerId);
+    }
+
+    async initiateConnection(peerId) {
+        try {
+            if (this.selectedPeer && this.selectedPeer.id === peerId) {
+                updateConnectionStatus("connecting");
+                showToast(`i18n:establishingConnection`, 2000);
+            }
+
+            const peerConnection = this.peerConnections[peerId];
+            if (!peerConnection) {
+                console.error("No peer connection found for:", peerId);
+                return;
+            }
+
+            console.log('发起连接:', {
+                peerId,
+                turnOnly: peerConnection.usingTurnOnly,
+                attempts: this.connectionAttempts[peerId]
+            });
+
+            const offer = await peerConnection.createOffer({
+                offerToReceiveAudio: false,
+                offerToReceiveVideo: false,
+                iceRestart: true,
+            });
+
+            await peerConnection.setLocalDescription(offer);
+            socket.emit("signal", {
+                to: peerId,
+                signal: peerConnection.localDescription,
+            });
+
+            this.setupConnectionTimeout(peerConnection, peerId);
+        } catch (error) {
+            console.error("Error during connection initiation:", error);
+            this.handleConnectionError(error, peerId);
+        }
+    }
+
+    setupConnectionTimeout(peerConnection, peerId) {
+        setTimeout(() => {
+            if (
+                peerConnection.connectionState !== "connected" &&
+                peerConnection.iceConnectionState !== "connected" &&
+                peerConnection.iceConnectionState !== "completed"
+            ) {
+                if (this.selectedPeer && this.selectedPeer.id === peerId) {
+                    this.initiateConnection(peerId);
+                }
+            }
+        }, ANSWER_TIMEOUT);
+    }
+
+    handleConnectionError(error, peerId) {
+        if (this.selectedPeer && this.selectedPeer.id === peerId) {
+            showToast(`i18n:connectionError:${error.message}`, 4000, true);
+            setTimeout(() => {
+                if (this.selectedPeer && this.selectedPeer.id === peerId) {
+                    this.recoverConnection(peerId);
+                }
+            }, 3000);
+        }
+    }
+
+    handleDataChannelMessage(event, peerId) {
+        const data = JSON.parse(event.data);
+        if (data.type === "file-info") {
+            this.handleFileInfo(data.info, peerId);
+        } else if (data.type === "file-data") {
+            this.handleFileData(data.chunk, peerId);
+        }
+    }
+
+    handleFileInfo(fileInfo, peerId) {
+        this.currentFileInfo = fileInfo;
+        this.receivedData = {
+            chunks: [],
+            receivedSize: 0,
+            fileInfo: fileInfo
+        };
+        console.log(`开始接收文件: ${fileInfo.name}, 大小: ${fileInfo.size}`);
+        showToast(`i18n:receivingFile:${fileInfo.name}`);
+    }
+
+    handleFileData(chunk, peerId) {
+        if (!this.currentFileInfo) return;
+
+        const currentFile = this.receivedData[this.currentFileInfo.name];
+        if (!currentFile) return;
+
+        currentFile.chunks.push(chunk);
+        currentFile.receivedSize += chunk.length;
+
+        if (currentFile.receivedSize === this.currentFileInfo.size) {
+            this.processReceivedFile(currentFile);
+        }
+    }
+
+    processReceivedFile(currentFile) {
+        try {
+            const fileData = currentFile.chunks.join("");
+            const fileBlob = utils.base64ToBlob(fileData, this.currentFileInfo.type);
+
+            this.addFileToHistory({
+                name: this.currentFileInfo.name,
+                size: this.currentFileInfo.size,
+                type: this.currentFileInfo.type,
+                data: fileBlob,
+                from: this.currentFileInfo.from,
+                direction: "received",
+                timestamp: new Date().toISOString(),
+            });
+
+            showFilePreview(fileBlob, this.currentFileInfo);
+            showToast(`i18n:fileReceived:${this.currentFileInfo.name}`);
+        } catch (error) {
+            console.error(`处理文件时出错: ${this.currentFileInfo.name}`, error);
+            showToast(`i18n:errorSendingFile:${error.message}`);
+        }
+    }
+}
+
+// 初始化
+const fileHandler = new FileHandler();
+const connectionManager = new ConnectionManager();
 
 // Initialize when connected to the server
 socket.on("init", (data) => {
@@ -293,7 +717,7 @@ socket.on("init", (data) => {
 
   // Update UI with user info
   userNameElement.textContent = data.name;
-  avatarTextElement.textContent = getInitials(data.name);
+  avatarTextElement.textContent = utils.getInitials(data.name);
 
   // Update page text with current language
   updatePageText();
@@ -347,39 +771,45 @@ socket.on("client-left", (clientId) => {
 
 // Handle incoming WebRTC signals
 socket.on("signal", async (data) => {
-  const { from, signal } = data;
+    const { from, signal } = data;
 
-  // If we don't have a peer connection with this client yet, create one
-  if (!peerConnections[from]) {
-    createPeerConnection(from);
-  }
-
-  try {
-    // Process the signal based on its type
-    if (signal.type === "offer") {
-      await peerConnections[from].setRemoteDescription(
-        new RTCSessionDescription(signal)
-      );
-      const answer = await peerConnections[from].createAnswer();
-      await peerConnections[from].setLocalDescription(answer);
-
-      // Send the answer back to the peer
-      socket.emit("signal", {
-        to: from,
-        signal: peerConnections[from].localDescription,
-      });
-    } else if (signal.type === "answer") {
-      await peerConnections[from].setRemoteDescription(
-        new RTCSessionDescription(signal)
-      );
-    } else if (signal.type === "candidate") {
-      await peerConnections[from].addIceCandidate(
-        new RTCIceCandidate(signal.candidate)
-      );
+    // If we don't have a peer connection with this client yet, create one
+    if (!connectionManager.peerConnections[from]) {
+        connectionManager.createPeerConnection(from);
     }
-  } catch (error) {
-    console.error("Error processing signal:", error);
-  }
+
+    try {
+        const peerConnection = connectionManager.peerConnections[from];
+        if (!peerConnection) {
+            console.error("No peer connection found for:", from);
+            return;
+        }
+
+        // Process the signal based on its type
+        if (signal.type === "offer") {
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal)
+            );
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            // Send the answer back to the peer
+            socket.emit("signal", {
+                to: from,
+                signal: peerConnection.localDescription,
+            });
+        } else if (signal.type === "answer") {
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal)
+            );
+        } else if (signal.type === "candidate") {
+            await peerConnection.addIceCandidate(
+                new RTCIceCandidate(signal.candidate)
+            );
+        }
+    } catch (error) {
+        console.error("Error processing signal:", error);
+    }
 });
 
 // Handle incoming messages
@@ -399,382 +829,6 @@ socket.on("receive-message", (data) => {
     showToast(`i18n:${__("newMessageFrom")}:${data.fromName}`);
   }
 });
-
-// Create a peer connection for a specific client
-function createPeerConnection(peerId, turnOnly = false) {
-  // Enhanced ICE server configuration with TURN servers
-  // Using free TURN servers from Twilio or other providers would be better in production
-  let iceServers;
-
-  if (turnOnly) {
-    // When turnOnly is true, prioritize TURN servers for more reliable connections
-    // in challenging network environments
-    console.log("Using TURN servers only for more reliable connection");
-    iceServers = [
-      // TURN servers first for priority
-      {
-        urls: "turn:openrelay.metered.ca:443", // Use 443 first as it's more likely to work through firewalls
-        username: "openrelayproject",
-        credential: "openrelayproject",
-      },
-      {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject",
-      },
-      // Include STUN as fallback only
-      { urls: "stun:stun.l.google.com:19302" },
-    ];
-  } else {
-    // Normal configuration with both STUN and TURN
-    iceServers = [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
-      // Free TURN servers (limited capacity, for testing only)
-      {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject",
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443",
-        username: "openrelayproject",
-        credential: "openrelayproject",
-      },
-    ];
-  }
-
-  const peerConnection = new RTCPeerConnection({
-    iceServers: iceServers,
-    iceCandidatePoolSize: 10, // Increase candidate pool for better connectivity
-  });
-
-  // Store whether this connection is using TURN-only mode
-  peerConnection.usingTurnOnly = turnOnly;
-
-  // Log which configuration we're using
-  console.log(
-    `Creating peer connection with ${
-      turnOnly ? "TURN priority" : "standard"
-    } configuration`
-  );
-
-  // Log ICE gathering state changes
-  peerConnection.onicegatheringstatechange = () => {
-    console.log(
-      `ICE gathering state with ${peerId}: ${peerConnection.iceGatheringState}`
-    );
-  };
-
-  // Set up data channel for file transfer
-  const dataChannel = peerConnection.createDataChannel("fileTransfer", {
-    ordered: true,
-  });
-
-  console.log('创建数据通道:', {
-    peerId,
-    dataChannelState: dataChannel.readyState
-  });
-
-  let receivedData = {};  // 修改为对象，用于存储多个文件的数据
-  let fileInfo = null;
-  let connectionTimeout = null;
-
-  dataChannel.onopen = () => {
-    console.log(`数据通道已打开: ${peerId}`);
-    // Clear any connection timeout
-    if (connectionTimeout) {
-      clearTimeout(connectionTimeout);
-      connectionTimeout = null;
-    }
-
-    // Update UI if this is the selected peer
-    if (selectedPeer && selectedPeer.id === peerId) {
-      console.log('更新连接状态为已连接');
-      updateConnectionStatus("connected");
-      sendFileBtn.disabled = selectedFiles.size === 0;
-    }
-  };
-
-  dataChannel.onclose = () => {
-    console.log(`数据通道已关闭: ${peerId}`);
-  };
-
-  dataChannel.onerror = (error) => {
-    console.error(`数据通道错误: ${peerId}`, error);
-  };
-
-  dataChannel.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    // Handle different types of messages
-    if (data.type === "file-info") {
-      // 为新文件创建接收缓冲区
-      fileInfo = data.info;
-      receivedData[fileInfo.name] = {
-        chunks: [],
-        receivedSize: 0,
-        fileInfo: fileInfo
-      };
-
-      console.log(`开始接收文件: ${fileInfo.name}, 大小: ${fileInfo.size}`);
-      showToast(`i18n:receivingFile:${fileInfo.name}`);
-    } else if (data.type === "file-data") {
-      // 确保我们有文件信息
-      if (!fileInfo) {
-        console.error('收到文件数据但没有文件信息');
-        return;
-      }
-
-      const currentFile = receivedData[fileInfo.name];
-      if (!currentFile) {
-        console.error(`找不到文件 ${fileInfo.name} 的接收缓冲区`);
-        return;
-      }
-
-      // 收集文件块
-      currentFile.chunks.push(data.chunk);
-      currentFile.receivedSize += data.chunk.length;
-
-      console.log(`接收文件块: ${fileInfo.name}, 当前大小: ${currentFile.receivedSize}/${fileInfo.size}`);
-
-      // 检查文件是否接收完成
-      if (currentFile.receivedSize === fileInfo.size) {
-        console.log(`文件接收完成: ${fileInfo.name}`);
-        try {
-          // 合并块并创建文件
-          const fileData = currentFile.chunks.join("");
-          const fileBlob = base64ToBlob(fileData, fileInfo.type);
-
-          // 添加到历史并显示预览
-          addFileToHistory({
-            name: fileInfo.name,
-            size: fileInfo.size,
-            type: fileInfo.type,
-            data: fileBlob,
-            from: peerId,
-            direction: "received",
-            timestamp: new Date().toISOString(),
-          });
-
-          showFilePreview(fileBlob, fileInfo);
-          showToast(`i18n:fileReceived:${fileInfo.name}`);
-
-          // 清理这个文件的接收数据
-          delete receivedData[fileInfo.name];
-          if (Object.keys(receivedData).length === 0) {
-            fileInfo = null;
-          }
-        } catch (error) {
-          console.error(`处理文件时出错: ${fileInfo.name}`, error);
-          showToast(`i18n:errorSendingFile:${error.message}`);
-          // 清理错误文件的数据
-          delete receivedData[fileInfo.name];
-          if (Object.keys(receivedData).length === 0) {
-            fileInfo = null;
-          }
-        }
-      } else if (currentFile.receivedSize > fileInfo.size) {
-        console.error(`文件大小超出预期: ${fileInfo.name}, 当前大小: ${currentFile.receivedSize}`);
-        showToast(`i18n:errorSendingFile:文件大小超出预期`);
-        // 清理错误文件的数据
-        delete receivedData[fileInfo.name];
-        if (Object.keys(receivedData).length === 0) {
-          fileInfo = null;
-        }
-      }
-    }
-  };
-
-  // Handle ICE candidates
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("signal", {
-        to: peerId,
-        signal: {
-          type: "candidate",
-          candidate: event.candidate,
-        },
-      });
-    }
-  };
-
-  // Monitor ICE connection state changes
-  peerConnection.oniceconnectionstatechange = () => {
-    console.log(
-      `ICE connection state with ${peerId}: ${peerConnection.iceConnectionState}`
-    );
-    if (selectedPeer && selectedPeer.id === peerId) {
-      if (
-        peerConnection.iceConnectionState === "connected" ||
-        peerConnection.iceConnectionState === "completed"
-      ) {
-        updateConnectionStatus("connected");
-        // Clear any connection timeout
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-          connectionTimeout = null;
-        }
-      } else if (peerConnection.iceConnectionState === "failed") {
-        // Connection failed, try to restart ICE
-        console.log("ICE connection failed, restarting...");
-        peerConnection.restartIce();
-        updateConnectionStatus("connecting");
-      } else if (
-        peerConnection.iceConnectionState === "disconnected" ||
-        peerConnection.iceConnectionState === "closed"
-      ) {
-        updateConnectionStatus("disconnected");
-      }
-    }
-  };
-
-  // Monitor connection state changes
-  peerConnection.onconnectionstatechange = () => {
-    console.log(
-      `Connection state with ${peerId}: ${peerConnection.connectionState}`
-    );
-    if (selectedPeer && selectedPeer.id === peerId) {
-      if (peerConnection.connectionState === "connected") {
-        updateConnectionStatus("connected");
-        // Clear any connection timeout
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-          connectionTimeout = null;
-        }
-      } else if (peerConnection.connectionState === "failed") {
-        // If connection failed, try to reconnect
-        console.log("Connection failed, attempting to reconnect...");
-        // Close the old connection
-        peerConnection.close();
-        // Create a new connection after a short delay
-        setTimeout(() => {
-          if (selectedPeer && selectedPeer.id === peerId) {
-            createPeerConnection(peerId);
-            initiateConnection(peerId);
-          }
-        }, 1000);
-      } else if (
-        peerConnection.connectionState === "disconnected" ||
-        peerConnection.connectionState === "closed"
-      ) {
-        updateConnectionStatus("disconnected");
-      }
-    }
-  };
-
-  // Handle incoming data channels
-  peerConnection.ondatachannel = (event) => {
-    const incomingChannel = event.channel;
-    incomingChannel.onmessage = dataChannel.onmessage;
-    incomingChannel.onopen = () => {
-      console.log(`Incoming data channel from ${peerId} opened`);
-      // Update UI if this is the selected peer
-      if (selectedPeer && selectedPeer.id === peerId) {
-        updateConnectionStatus("connected");
-        sendFileBtn.disabled = selectedFiles.size === 0;
-      }
-    };
-    incomingChannel.onclose = () =>
-      console.log(`Incoming data channel from ${peerId} closed`);
-  };
-
-  // Store the peer connection and data channel
-  peerConnections[peerId] = peerConnection;
-  peerConnections[peerId].dataChannel = dataChannel;
-
-  // Set a timeout to check if the connection is established
-  connectionTimeout = setTimeout(() => {
-    if (
-      selectedPeer &&
-      selectedPeer.id === peerId &&
-      (!dataChannel || dataChannel.readyState !== "open")
-    ) {
-      console.log("Connection timeout, connection may not be established");
-
-      // Check the ICE connection state to provide more specific feedback
-      let timeoutReason = "";
-      if (peerConnection.iceConnectionState === "checking") {
-        timeoutReason =
-          "ICE negotiation is still in progress. This could be due to network restrictions or firewall issues.";
-      } else if (peerConnection.iceConnectionState === "failed") {
-        timeoutReason =
-          "ICE negotiation failed. Your network may be blocking peer-to-peer connections.";
-      } else if (peerConnection.iceConnectionState === "disconnected") {
-        timeoutReason =
-          "Connection was interrupted. The peer may have gone offline or changed networks.";
-      } else {
-        timeoutReason =
-          "Connection could not be established. This might be due to network restrictions or firewall settings.";
-      }
-
-      console.log("Connection timeout reason:", timeoutReason);
-
-      // Update UI to show connection might have issues with the specific reason
-      updateConnectionStatus("connection-timeout", peerId, timeoutReason);
-      sendFileBtn.disabled = true;
-
-      // Try to restart the connection
-      try {
-        peerConnection.restartIce();
-        console.log("ICE connection restart initiated");
-      } catch (error) {
-        console.error("Error restarting ICE connection:", error);
-      }
-
-      // Set another timeout to try TURN servers as fallback if still not connected
-      setTimeout(() => {
-        if (
-          selectedPeer &&
-          selectedPeer.id === peerId &&
-          (!dataChannel || dataChannel.readyState !== "open")
-        ) {
-          console.log("Still not connected, trying with TURN servers only...");
-          showToast(
-            `i18n:connectionIssueDetected`,
-            5000,
-            true
-          );
-
-          // Close the old connection
-          peerConnection.close();
-
-          // Create a new connection with emphasis on TURN servers
-          createPeerConnection(peerId, true);
-          initiateConnection(peerId);
-
-          // Show a more detailed explanation to the user
-          const connectionTips = document.createElement("div");
-          connectionTips.className = "connection-tips";
-          connectionTips.innerHTML = `
-  <h3>${__("connectionTroubleshootingTitle")}</h3>
-  <ul>
-    <li>${__("connectionTroubleshootingSameNetwork")}</li>
-    <li>${__("connectionTroubleshootingCorporateNetwork")}</li>
-    <li>${__("connectionTroubleshootingVPN")}</li>
-    <li>${__("connectionTroubleshootingMobile")}</li>
-  </ul>
-`;
-
-          // Add the tips to the UI
-          const fileTransferArea = document.querySelector(
-            ".file-transfer-area"
-          );
-          const existingTips = document.querySelector(".connection-tips");
-          if (existingTips) {
-            existingTips.remove();
-          }
-          fileTransferArea.appendChild(connectionTips);
-        }
-      }, 10000); // Give it 10 more seconds before trying TURN-only approach
-    }
-  }, 15000); // Increase timeout to 15 seconds to give more time for connection
-
-  return peerConnection;
-}
 
 // Update the peers list with clients
 function updatePeersList(clients) {
@@ -854,7 +908,7 @@ function addPeerToList(peer) {
   peerElement.className = "peer-item";
   peerElement.innerHTML = `
     <div class="avatar">
-      <span>${getInitials(peer.name)}</span>
+      <span>${utils.getInitials(peer.name)}</span>
     </div>
     <div class="name">${peer.name}</div>
   `;
@@ -879,133 +933,52 @@ function updateNoPeersMessage() {
 
 // Select a peer to communicate with
 function selectPeer(peer) {
-  console.log('选择对等方:', peer);
-  selectedPeer = peer;
+    console.log('选择对等方:', peer);
+    selectedPeer = peer;
+    connectionManager.selectedPeer = peer;
 
-  // Update the UI
-  selectedAvatarText.textContent = getInitials(peer.name);
-  selectedPeerName.textContent = peer.name;
+    // Update the UI
+    selectedAvatarText.textContent = utils.getInitials(peer.name);
+    selectedPeerName.textContent = peer.name;
 
-  // Show the transfer container
-  peersList.parentElement.classList.add("hidden");
-  transferContainer.classList.remove("hidden");
+    // Show the transfer container
+    peersList.parentElement.classList.add("hidden");
+    transferContainer.classList.remove("hidden");
 
-  // 在显示传输容器之后，更新文件历史显示
-  updateFileHistoryDisplay(peer.id);
+    // 在显示传输容器之后，更新文件历史显示
+    fileHandler.updateFileHistoryDisplay(peer.id);
 
-  // Clear any notification for this peer
-  const peerElement = document.getElementById(`peer-${peer.id}`);
-  if (peerElement) {
-    peerElement.classList.remove("has-notification");
-  }
+    // Clear any notification for this peer
+    const peerElement = document.getElementById(`peer-${peer.id}`);
+    if (peerElement) {
+        peerElement.classList.remove("has-notification");
+    }
 
-  // Ensure we have a peer connection
-  if (!peerConnections[peer.id]) {
-    console.log('创建新的对等连接');
-    createPeerConnection(peer.id);
-
-    // Create an offer to establish the connection
-    console.log('发起连接');
-    initiateConnection(peer.id);
-
-    // Show connecting status
-    updateConnectionStatus("connecting");
-  } else {
-    console.log('使用现有连接:', {
-      dataChannel: peerConnections[peer.id].dataChannel ? '存在' : '不存在',
-      dataChannelState: peerConnections[peer.id].dataChannel?.readyState,
-      connectionState: peerConnections[peer.id].connectionState
-    });
-    
-    // Check if data channel is already open
-    const dataChannel = peerConnections[peer.id].dataChannel;
-    if (dataChannel && dataChannel.readyState === "open") {
-      updateConnectionStatus("connected");
+    // Ensure we have a peer connection
+    if (!connectionManager.peerConnections[peer.id]) {
+        console.log('创建新的对等连接');
+        connectionManager.createPeerConnection(peer.id);
+        connectionManager.initiateConnection(peer.id);
+        updateConnectionStatus("connecting");
     } else {
-      updateConnectionStatus("connecting");
-    }
-  }
-
-  // Reset the file input
-  fileInput.value = "";
-  selectedFiles.clear();
-  sendFileBtn.disabled = true;
-}
-
-// Initiate a WebRTC connection with a peer
-async function initiateConnection(peerId) {
-  try {
-    // Update UI to show connecting status
-    if (selectedPeer && selectedPeer.id === peerId) {
-      updateConnectionStatus("connecting");
-      showToast(`i18n:establishingConnection`, 2000);
-    }
-
-    // Log connection attempt details
-    const peerConnection = peerConnections[peerId];
-    const usingTurnOnly = peerConnection.usingTurnOnly || false;
-    console.log(
-      `Connection attempt details:\n- Peer ID: ${peerId}\n- Using TURN priority: ${
-        usingTurnOnly ? "Yes" : "No"
-      }`
-    );
-
-    // Create an offer to connect with improved error handling
-    console.log("Creating offer...");
-    const offer = await peerConnection.createOffer({
-      offerToReceiveAudio: false,
-      offerToReceiveVideo: false,
-      iceRestart: true, // Force ICE restart to improve connection success rate
-    });
-    console.log("Created offer successfully");
-
-    await peerConnection.setLocalDescription(offer);
-    console.log("Local description set successfully");
-
-    // Send the offer to the peer via the signaling server
-    socket.emit("signal", {
-      to: peerId,
-      signal: peerConnection.localDescription,
-    });
-    console.log("Offer sent to signaling server");
-
-    // Add a safety timeout to retry if no answer is received
-    setTimeout(() => {
-      if (
-        peerConnection.connectionState !== "connected" &&
-        peerConnection.iceConnectionState !== "connected" &&
-        peerConnection.iceConnectionState !== "completed"
-      ) {
-        console.log(
-          "No answer received within timeout, retrying connection..."
-        );
-        // Only retry if we're still trying to connect to this peer
-        if (selectedPeer && selectedPeer.id === peerId) {
-          // Try again with a new offer
-          initiateConnection(peerId);
+        console.log('使用现有连接:', {
+            dataChannel: connectionManager.peerConnections[peer.id].dataChannel ? '存在' : '不存在',
+            dataChannelState: connectionManager.peerConnections[peer.id].dataChannel?.readyState,
+            connectionState: connectionManager.peerConnections[peer.id].connectionState
+        });
+        
+        const dataChannel = connectionManager.peerConnections[peer.id].dataChannel;
+        if (dataChannel && dataChannel.readyState === "open") {
+            updateConnectionStatus("connected");
+        } else {
+            updateConnectionStatus("connecting");
         }
-      }
-    }, 20000); // 20 second timeout for answer
-  } catch (error) {
-    console.error("Error during connection initiation:", error);
-    if (selectedPeer && selectedPeer.id === peerId) {
-      showToast(`i18n:connectionError:${error.message}`, 4000, true);
-
-      // Try to recover from the error
-      setTimeout(() => {
-        if (selectedPeer && selectedPeer.id === peerId) {
-          console.log("Attempting to recover from connection error...");
-          // Close the old connection if it exists
-          if (peerConnections[peerId]) {
-            peerConnections[peerId].close();
-          }
-          // Create a new connection and try again
-          createPeerConnection(peerId, true); // Use TURN-only for recovery
-          initiateConnection(peerId);
-        }
-      }, 3000);
     }
-  }
+
+    // Reset the file input
+    fileInput.value = "";
+    fileHandler.selectedFiles.clear();
+    sendFileBtn.disabled = true;
 }
 
 // Show the peers list (go back)
@@ -1015,213 +988,13 @@ function showPeersList() {
   peersList.parentElement.classList.remove("hidden");
 }
 
-// Send selected files to the selected peer
-async function sendFiles() {
-  if (!selectedPeer || selectedFiles.size === 0) {
-    console.log('无法发送文件:', { 
-      selectedPeer: selectedPeer ? selectedPeer.id : null,
-      selectedFilesSize: selectedFiles.size 
-    });
-    return;
-  }
-
-  const dataChannel = peerConnections[selectedPeer.id]?.dataChannel;
-  if (!dataChannel || dataChannel.readyState !== "open") {
-    console.log('数据通道未就绪:', {
-      dataChannel: dataChannel ? '存在' : '不存在',
-      dataChannelState: dataChannel?.readyState
-    });
-    showToast("连接未就绪，请稍后重试");
-    return;
-  }
-
-  console.log('开始发送文件:', {
-    filesCount: selectedFiles.size,
-    peerId: selectedPeer.id
-  });
-
-  // 转换为数组以便遍历
-  const filesToSend = Array.from(selectedFiles);
-  
-  // Process each file
-  for (const file of filesToSend) {
-    try {
-      console.log('正在发送文件:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
-      });
-
-      // Read the file as base64
-      const base64Data = await readFileAsBase64(file);
-
-      // Send file info first
-      dataChannel.send(
-        JSON.stringify({
-          type: "file-info",
-          info: {
-            name: file.name,
-            size: base64Data.length,
-            type: file.type,
-          },
-        })
-      );
-
-      // Send the file data in chunks
-      const chunkSize = 16384; // 16KB chunks
-      let offset = 0;
-
-      while (offset < base64Data.length) {
-        const chunk = base64Data.slice(offset, offset + chunkSize);
-        dataChannel.send(
-          JSON.stringify({
-            type: "file-data",
-            chunk: chunk,
-          })
-        );
-
-        offset += chunkSize;
-      }
-
-      // Add to history
-      addFileToHistory({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        data: file,
-        to: selectedPeer.id,
-        direction: "sent",
-        timestamp: new Date().toISOString(),
-      });
-
-      console.log('文件发送完成:', {
-        fileName: file.name,
-        fileSize: file.size
-      });
-
-      showToast(`i18n:fileSentSuccessfully:${file.name}`);
-    } catch (error) {
-      console.error("发送文件时出错:", error);
-      showToast(`i18n:errorSendingFile:${error.message}`);
-    }
-  }
-
-  // 重置文件选择状态
-  console.log('重置文件选择状态');
-  fileInput.value = "";
-  selectedFiles.clear();
-  fileList.innerHTML = "";
-  
-  // 强制更新按钮状态
-  console.log('更新发送按钮状态');
-  updateSendButton();
-  
-  // 确保数据通道仍然保持打开状态
-  if (dataChannel.readyState === "open") {
-    console.log('数据通道保持打开状态');
-    sendFileBtn.disabled = true;
-    sendFileBtn.style.backgroundColor = 'var(--gray-300)';
-    sendFileBtn.style.cursor = 'not-allowed';
-  }
-}
-
-// Add a file to the transfer history
-function addFileToHistory(file) {
-  // 创建或获取特定对等方的历史记录数组
-  const peerId = file.direction === "sent" ? file.to : file.from;
-  if (!peerFileHistory[peerId]) {
-    peerFileHistory[peerId] = [];
-  }
-
-  // 将文件添加到特定对等方的历史记录中
-  peerFileHistory[peerId].unshift(file);
-
-  // 如果当前选中的是这个对等方，则更新显示
-  if (selectedPeer && selectedPeer.id === peerId) {
-    updateFileHistoryDisplay(peerId);
-  }
-}
-
-function updateFileHistoryDisplay(peerId) {
-  // 清空当前历史显示
-  fileHistory.innerHTML = "";
-
-  // 如果没有该对等方的历史记录，显示空状态
-  if (!peerFileHistory[peerId]) {
-    fileHistory.innerHTML = `
-      <div class="empty-history">
-        <i class="fas fa-history"></i>
-        <p>${__("noFileHistory")}</p>
-      </div>
-    `;
-    return;
-  }
-
-  // 显示特定对等方的文件历史
-  peerFileHistory[peerId].forEach((file) => {
-    const historyItem = document.createElement("div");
-    historyItem.className = `history-item ${file.direction}`;
-
-    // 获取文件类型图标
-    const fileIcon = getFileTypeIcon(file);
-    const formattedSize = formatFileSize(file.size);
-    const formattedTime = new Date(file.timestamp).toLocaleTimeString();
-    const formattedDate = new Date(file.timestamp).toLocaleDateString();
-
-    historyItem.innerHTML = `
-      <div class="history-item-content">
-        <div class="file-icon-wrapper">
-          <i class="fas ${fileIcon}"></i>
-        </div>
-        <div class="file-info">
-          <div class="file-name" title="${file.name}">${file.name}</div>
-          <div class="file-meta">
-            <span class="file-size">${formattedSize}</span>
-            <span class="file-date">${formattedDate} ${formattedTime}</span>
-            <span class="file-direction ${file.direction}">
-              <i class="fas ${file.direction === 'sent' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
-              ${file.direction === "sent" ? __("sent") : __("received")}
-            </span>
-          </div>
-        </div>
-        <div class="file-actions">
-          <button class="action-btn preview-btn" title="${__("preview")}">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="action-btn download-btn" title="${__("download")}">
-            <i class="fas fa-download"></i>
-          </button>
-        </div>
-      </div>
-    `;
-
-    // 添加预览按钮事件
-    const previewBtn = historyItem.querySelector(".preview-btn");
-    previewBtn.addEventListener("click", () => {
-      showFilePreview(file.data, {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-    });
-
-    // 添加下载按钮事件
-    const downloadBtn = historyItem.querySelector(".download-btn");
-    downloadBtn.addEventListener("click", () => {
-      saveFile(file.data, file.name);
-    });
-
-    fileHistory.appendChild(historyItem);
-  });
-}
-
 // Show file preview in modal
 function showFilePreview(fileData, fileInfo) {
   // Set file name
   previewFileName.textContent = fileInfo.name;
 
   // Set file info
-  fileInfoSize.textContent = `${__("size")}: ${formatFileSize(fileInfo.size)}`;
+  fileInfoSize.textContent = `${__("size")}: ${utils.formatFileSize(fileInfo.size)}`;
   fileInfoType.textContent = `${__("type")}: ${fileInfo.type || __("unknown")}`;
 
   // Clear previous preview
@@ -1364,52 +1137,6 @@ function showToast(message, duration = 3000, isError = false) {
   }, duration);
 }
 
-// Format file size in a human-readable format
-function formatFileSize(bytes) {
-  if (bytes < 1024) {
-    return bytes + " B";
-  } else if (bytes < 1024 * 1024) {
-    return (bytes / 1024).toFixed(1) + " KB";
-  } else if (bytes < 1024 * 1024 * 1024) {
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  } else {
-    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
-  }
-}
-
-// Get initials from a name
-function getInitials(name) {
-  return name.charAt(0);
-}
-
-// Read a file as base64
-function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Get the base64 string (remove the data URL prefix)
-      const base64 = reader.result.split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = () => {
-      reject(new Error("Error reading file"));
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// Convert base64 to Blob
-function base64ToBlob(base64, type) {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-
-  return new Blob([bytes], { type: type });
-}
-
 // Update connection status in the UI
 function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
   // Remove any existing status indicator
@@ -1454,8 +1181,8 @@ function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
           }
           // Create a new connection
           updateConnectionStatus("connecting");
-          createPeerConnection(peerId);
-          initiateConnection(peerId);
+          connectionManager.createPeerConnection(peerId);
+          connectionManager.initiateConnection(peerId);
         }
       };
 
@@ -1471,8 +1198,8 @@ function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
           }
           // Create a new connection with TURN emphasis
           updateConnectionStatus("connecting");
-          createPeerConnection(peerId, true);
-          initiateConnection(peerId);
+          connectionManager.createPeerConnection(peerId, true);
+          connectionManager.initiateConnection(peerId);
         }
       };
 
@@ -1533,36 +1260,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  //const fileInput = document.getElementById('file-input');
+  const fileInput = document.getElementById('file-input');
   const uploadFileRadio = document.getElementById("upload-file");
   const uploadFolderRadio = document.getElementById("upload-folder");
 
-  // 监听单选按钮的变化
-  uploadFileRadio.addEventListener("change", () => {
+  // 修改事件监听方式，使用 change 和 click 事件
+  function updateFileInputAttributes() {
     if (uploadFileRadio.checked) {
       fileInput.removeAttribute("webkitdirectory");
-    }
-  });
-
-  uploadFolderRadio.addEventListener("change", () => {
-    if (uploadFolderRadio.checked) {
+      fileInput.removeAttribute("directory");
+    } else {
       fileInput.setAttribute("webkitdirectory", "");
+      fileInput.setAttribute("directory", "");
     }
+  }
+
+  // 为两个单选按钮都添加事件监听
+  [uploadFileRadio, uploadFolderRadio].forEach(radio => {
+    radio.addEventListener("change", updateFileInputAttributes);
   });
 
-  // 初始化时根据默认选项设置属性
-  if (uploadFolderRadio.checked) {
-    fileInput.setAttribute("webkitdirectory", "");
-  } else {
-    fileInput.removeAttribute("webkitdirectory");
-  }
+  // 初始化时设置属性
+  updateFileInputAttributes();
 
   // Back button
   backButton.addEventListener("click", showPeersList);
 
   // File input change
   fileInput.addEventListener("change", (e) => {
-    handleFileSelect(e.target.files);
+    fileHandler.handleFileSelect(e.target.files);
   });
 
   // File drop area
@@ -1578,11 +1304,11 @@ document.addEventListener("DOMContentLoaded", () => {
   fileDropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     fileDropArea.classList.remove("drag-over");
-    handleFileSelect(e.dataTransfer.files);
+    fileHandler.handleFileSelect(e.dataTransfer.files);
   });
 
   // Send file button
-  sendFileBtn.addEventListener("click", sendFiles);
+  sendFileBtn.addEventListener("click", () => fileHandler.sendFiles());
 
   // Send message button
   sendMessageBtn.addEventListener("click", sendMessage);
