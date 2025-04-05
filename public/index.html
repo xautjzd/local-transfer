@@ -121,6 +121,20 @@
                             <!-- 文件项将通过 JavaScript 动态添加 -->
                         </div>
 
+                        <!-- 添加传输进度展示 -->
+                        <div class="transfer-progress-container" id="transfer-progress-container">
+                            <div class="transfer-progress-header">
+                                <h4 data-i18n="transferProgress">传输进度</h4>
+                                <button class="minimize-progress" id="minimize-progress">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                            <div class="transfer-progress-content">
+                                <div id="transfer-progress-list" class="transfer-progress-list"></div>
+                                <div id="transfer-progress-summary" class="transfer-progress-summary"></div>
+                            </div>
+                        </div>
+
                         <button id="send-file-btn" class="send-btn" disabled data-i18n="sendFiles">
                             <i class="fas fa-paper-plane"></i> Send Files
                         </button>

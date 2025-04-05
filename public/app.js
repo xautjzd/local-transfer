@@ -50,9 +50,8 @@ initializeConnection();
 let myInfo = null;
 let selectedPeer = null;
 let peerConnections = {};
-let selectedFiles = new Set();
-// 存储每个对等方的文件历史
-let peerFileHistory = {};
+let connectionManager = null; // 改为let声明，可以在后面重新赋值
+let fileHandler = null; // 同样添加fileHandler的全局变量声明
 
 // DOM elements
 const userNameElement = document.getElementById("user-name");
@@ -171,6 +170,122 @@ class FileHandler {
         this.isProcessingFolder = false;
         this.maxFilesInFolder = 1000;
         this.currentTransfer = null;
+        this.transferProgressList = {}; // 存储传输进度信息
+    }
+    
+    // 初始化传输进度UI
+    initTransferProgress() {
+        const progressContainer = document.getElementById('transfer-progress-container');
+        const minimizeButton = document.getElementById('minimize-progress');
+        
+        // 设置最小化按钮事件
+        minimizeButton.addEventListener('click', () => {
+            progressContainer.classList.toggle('minimized');
+            const icon = minimizeButton.querySelector('i');
+            if (progressContainer.classList.contains('minimized')) {
+                icon.classList.remove('fa-minus');
+                icon.classList.add('fa-plus');
+            } else {
+                icon.classList.remove('fa-plus');
+                icon.classList.add('fa-minus');
+            }
+        });
+    }
+    
+    // 更新传输进度UI
+    updateTransferProgressUI() {
+        const progressContainer = document.getElementById('transfer-progress-container');
+        const progressList = document.getElementById('transfer-progress-list');
+        const progressSummary = document.getElementById('transfer-progress-summary');
+        
+        // 如果没有活跃传输，隐藏进度条
+        if (Object.keys(this.transferProgressList).length === 0) {
+            progressContainer.style.display = 'none';
+            return;
+        }
+        
+        // 显示进度容器
+        progressContainer.style.display = 'block';
+        
+        // 清空进度列表
+        progressList.innerHTML = '';
+        
+        // 计算汇总数据
+        let totalFiles = 0;
+        let completedFiles = 0;
+        let errorFiles = 0;
+        let inProgressFiles = 0;
+        
+        // 添加每个文件的进度条
+        Object.values(this.transferProgressList).forEach(file => {
+            totalFiles++;
+            
+            if (file.status === 'complete') completedFiles++;
+            else if (file.status === 'error') errorFiles++;
+            else inProgressFiles++;
+            
+            const progressItem = document.createElement('div');
+            progressItem.className = 'transfer-progress-item';
+            progressItem.id = `progress-${file.id}`;
+            
+            const progressTitle = document.createElement('div');
+            progressTitle.className = 'transfer-progress-title';
+            
+            const filename = document.createElement('div');
+            filename.className = 'transfer-progress-filename';
+            filename.textContent = file.name;
+            
+            const status = document.createElement('div');
+            status.className = 'transfer-progress-status';
+            
+            if (file.status === 'complete') {
+                status.textContent = file.direction === 'send' ? '已发送' : '已接收';
+            } else if (file.status === 'error') {
+                status.textContent = '失败';
+            } else {
+                status.textContent = `${file.progress}%`;
+            }
+            
+            const barContainer = document.createElement('div');
+            barContainer.className = 'transfer-progress-bar-container';
+            
+            const progressBar = document.createElement('div');
+            progressBar.className = `transfer-progress-bar ${file.status}`;
+            progressBar.style.width = `${file.progress}%`;
+            
+            progressTitle.appendChild(filename);
+            progressTitle.appendChild(status);
+            barContainer.appendChild(progressBar);
+            
+            progressItem.appendChild(progressTitle);
+            progressItem.appendChild(barContainer);
+            
+            progressList.appendChild(progressItem);
+        });
+        
+        // 更新汇总信息
+        progressSummary.textContent = `总计: ${totalFiles}个文件 | 完成: ${completedFiles} | 进行中: ${inProgressFiles} | 失败: ${errorFiles}`;
+    }
+    
+    // 添加或更新传输进度
+    updateTransferProgress(id, name, progress, direction, status = 'progress') {
+        this.transferProgressList[id] = {
+            id,
+            name,
+            progress: Math.min(Math.round(progress), 100),
+            direction,
+            status
+        };
+        
+        this.updateTransferProgressUI();
+        
+        // 如果传输完成，5秒后从列表中移除
+        if (status === 'complete' || status === 'error') {
+            setTimeout(() => {
+                delete this.transferProgressList[id];
+                this.updateTransferProgressUI();
+            }, 5000);
+        }
     }
 
     handleFileSelect(files) {
@@ -291,6 +406,9 @@ class FileHandler {
             const file = filesToSend[i];
             sendingState.currentFileIndex = i + 1;
             
+            // 为每个文件创建唯一ID
+            const fileId = Math.random().toString(36).substring(2, 9);
+            
             try {
                 // 设置当前传输文件
                 this.currentTransfer = {
@@ -299,6 +417,9 @@ class FileHandler {
                     sentSize: 0,
                     lastProgressUpdate: 0
                 };
+
+                // 添加到进度跟踪
+                this.updateTransferProgress(fileId, file.name, 0, 'send');
 
                 // 显示当前正在发送的文件信息
                 if (filesToSend.length > 1) {
@@ -390,6 +511,10 @@ class FileHandler {
                         const now = Date.now();
                         if (now - lastProgressTime > PROGRESS_UPDATE_INTERVAL) {
                             const progress = Math.min(Math.round((offset / base64Data.length) * 100), 99);
+                            
+                            // 更新进度跟踪系统
+                            this.updateTransferProgress(fileId, file.name, progress, 'send');
+                            
                             // 多文件发送时显示当前文件和总文件数
                             if (filesToSend.length > 1) {
                                 showToast(`发送 ${file.name} (${i+1}/${filesToSend.length}): ${progress}%`, 1000);
@@ -430,9 +555,14 @@ class FileHandler {
                         timestamp: Date.now()
                     }));
 
+                    // 更新为完成状态
+                    this.updateTransferProgress(fileId, file.name, 100, 'send', 'complete');
+                    
                     sendingState.success++;
                 } catch (error) {
                     clearTimeout(fileTransferTimeout);
+                    // 更新为错误状态
+                    this.updateTransferProgress(fileId, file.name, 0, 'send', 'error');
                     throw error;
                 }
                 
@@ -599,7 +729,7 @@ class FileHandler {
 
 // 连接管理类
 class ConnectionManager {
-    constructor() {
+    constructor(fileHandlerRef) {
         this.peerConnections = {};
         this.selectedPeer = null;
         this.currentFileInfo = null;
@@ -612,6 +742,9 @@ class ConnectionManager {
         this.lastProgressUpdate = 0;
         this.heartbeatInterval = null;
         this.receivingQueue = []; // 添加文件接收队列
+        this.fileHandler = fileHandlerRef; // 保存对fileHandler的引用
+        
+        // 初始化其它属性...
     }
 
     createPeerConnection(peerId, turnOnly = false) {
@@ -743,7 +876,7 @@ class ConnectionManager {
             console.log(`数据通道已打开: ${peerId}, readyState:`, dataChannel.readyState);
             if (this.selectedPeer && this.selectedPeer.id === peerId) {
                 updateConnectionStatus("connected");
-                fileHandler.updateSendButton();
+                this.fileHandler.updateSendButton();
                 
                 // 清除之前的超时
                 if (this.transferTimeout) {
@@ -760,9 +893,9 @@ class ConnectionManager {
                     // 移动端给更长的重连延迟
                     setTimeout(() => {
                         // 检查是否正在传输文件
-                        if (fileHandler.currentTransfer) {
+                        if (this.fileHandler.currentTransfer) {
                             showToast("文件传输中断，请重试", 3000, true);
-                            fileHandler.currentTransfer = null;
+                            this.fileHandler.currentTransfer = null;
                         }
                         this.checkAndUpdateConnectionStatus(peerId);
                         if (this.peerConnections[peerId]?.connectionState !== "connected") {
@@ -772,7 +905,7 @@ class ConnectionManager {
                 } else {
                     updateConnectionStatus("disconnected");
                 }
-                fileHandler.updateSendButton();
+                this.fileHandler.updateSendButton();
             }
         };
 
@@ -780,13 +913,13 @@ class ConnectionManager {
             console.error(`数据通道错误: ${peerId}`, error);
             if (this.isMobile) {
                 // 检查是否正在传输文件
-                if (fileHandler.currentTransfer) {
+                if (this.fileHandler.currentTransfer) {
                     showToast("文件传输出错，请重试", 3000, true);
-                    fileHandler.currentTransfer = null;
+                    this.fileHandler.currentTransfer = null;
                 }
                 this.recoverConnection(peerId);
             }
-            fileHandler.updateSendButton();
+            this.fileHandler.updateSendButton();
         };
 
         // 添加缓冲区阈值监控 - 当缓冲区超过阈值时记录日志
@@ -803,18 +936,18 @@ class ConnectionManager {
             
             // 根据文件大小调整超时时间
             let timeoutDuration = 30000; // 默认30秒
-            if (fileHandler.currentTransfer && fileHandler.currentTransfer.totalSize) {
+            if (this.fileHandler.currentTransfer && this.fileHandler.currentTransfer.totalSize) {
                 // 大文件给更长的超时时间 - 每10MB增加30秒
-                const sizeMB = fileHandler.currentTransfer.totalSize / (1024 * 1024);
+                const sizeMB = this.fileHandler.currentTransfer.totalSize / (1024 * 1024);
                 const additionalTime = Math.floor(sizeMB / 10) * 30000;
                 timeoutDuration = Math.min(30000 + additionalTime, 300000); // 最多5分钟
             }
             
             // 设置新的超时
             this.transferTimeout = setTimeout(() => {
-                if (fileHandler.currentTransfer) {
+                if (this.fileHandler.currentTransfer) {
                     showToast("文件传输超时，请重试", 3000, true);
-                    fileHandler.currentTransfer = null;
+                    this.fileHandler.currentTransfer = null;
                     this.checkAndUpdateConnectionStatus(peerId);
                 }
             }, timeoutDuration);
@@ -1180,6 +1313,9 @@ class ConnectionManager {
             // 添加接收确认日志
             console.log(`收到文件传输请求: ${fileInfo.name}, 大小: ${utils.formatFileSize(fileInfo.size)}`);
             
+            // 为接收的文件创建唯一ID
+            const fileId = Math.random().toString(36).substring(2, 9);
+            
             // 检查是否已有传输任务，但允许多文件队列
             if (this.currentFileInfo && this.receivingQueue && this.receivingQueue.length < 10) {
                 // 我们当前正在接收一个文件，但可以将此文件加入队列
@@ -1187,7 +1323,7 @@ class ConnectionManager {
                 if (!this.receivingQueue) {
                     this.receivingQueue = [];
                 }
-                this.receivingQueue.push({fileInfo, peerId});
+                this.receivingQueue.push({fileInfo, peerId, fileId});
                 return;
             }
             
@@ -1200,12 +1336,17 @@ class ConnectionManager {
             
             // 处理文件信息
             this.currentFileInfo = fileInfo;
+            this.currentFileInfo.id = fileId; // 保存文件ID
             this.receivedData[fileInfo.name] = {
                 chunks: [],
                 receivedSize: 0,
                 fileInfo: fileInfo,
-                startTime: Date.now()
+                startTime: Date.now(),
+                fileId: fileId
             };
+            
+            // 添加到进度跟踪
+            this.fileHandler.updateTransferProgress(fileId, fileInfo.name, 0, 'receive');
             
             console.log(`开始接收文件: ${fileInfo.name}, 大小: ${utils.formatFileSize(fileInfo.size)}`);
             showToast(`i18n:receivingFile:${fileInfo.name}`);
@@ -1233,6 +1374,10 @@ class ConnectionManager {
         const now = Date.now();
         if (now - this.lastProgressUpdate > PROGRESS_UPDATE_INTERVAL) {
             const progress = Math.min(Math.round((currentFile.receivedSize / this.currentFileInfo.size) * 100), 99);
+            
+            // 更新进度条
+            this.fileHandler.updateTransferProgress(currentFile.fileId, this.currentFileInfo.name, progress, 'receive');
+            
             showToast(`正在接收 ${this.currentFileInfo.name}: ${progress}%`, 1000);
             this.lastProgressUpdate = now;
         }
@@ -1254,6 +1399,9 @@ class ConnectionManager {
     processReceivedFile(currentFile, peerId) {
         try {
             console.log(`处理接收到的文件: ${this.currentFileInfo.name}, 大小: ${currentFile.receivedSize} bytes`);
+            
+            // 使用内部引用而不是全局变量
+            this.fileHandler.updateTransferProgress(currentFile.fileId, this.currentFileInfo.name, 100, 'receive', 'complete');
             
             // 大文件处理优化：分批次连接数据，避免内存问题
             let fileData = "";
@@ -1279,7 +1427,7 @@ class ConnectionManager {
             const fileInfo = this.currentFileInfo;
 
             // Add to file history
-            fileHandler.addFileToHistory({
+            this.fileHandler.addFileToHistory({
                 name: fileInfo.name,
                 size: fileInfo.size,
                 type: fileInfo.type,
@@ -1319,6 +1467,12 @@ class ConnectionManager {
             }
         } catch (error) {
             console.error(`处理文件时出错: ${this.currentFileInfo.name}`, error);
+            
+            // 更新进度为失败 - 使用内部引用
+            if (currentFile && currentFile.fileId) {
+                this.fileHandler.updateTransferProgress(currentFile.fileId, this.currentFileInfo.name, 0, 'receive', 'error');
+            }
+            
             showToast(`i18n:errorReceivingFile:${error.message}`);
             
             // 清理资源
@@ -1336,10 +1490,6 @@ class ConnectionManager {
         }
     }
 }
-
-// 初始化
-const fileHandler = new FileHandler();
-const connectionManager = new ConnectionManager();
 
 // Initialize when connected to the server
 socket.on("init", (data) => {
@@ -1869,165 +2019,175 @@ function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
 }
 
 // Event listeners
-document.addEventListener("DOMContentLoaded", () => {
-  // 创建语言选择器
-  createLanguageSelector("language-container");
-
-  // 初始化页面文本
-  updatePageText();
-
-  // Message input placeholder
-  messageInput.placeholder = __("typeMessage");
-
-  // Tab switching
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      // Remove active class from all tabs and contents
-      tabs.forEach((t) => t.classList.remove("active"));
-      tabContents.forEach((c) => c.classList.remove("active"));
-
-      // Add active class to clicked tab and corresponding content
-      tab.classList.add("active");
-      document.getElementById(`${tab.dataset.tab}-tab`).classList.add("active");
-    });
-  });
-
-  const fileInput = document.getElementById('file-input');
-  const uploadFileRadio = document.getElementById("upload-file");
-  const uploadFolderRadio = document.getElementById("upload-folder");
-
-  // 检测浏览器是否支持文件夹选择
-  const isDirectorySupported = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    return 'webkitdirectory' in input || 'directory' in input || 'mozdirectory' in input;
-  };
-
-  // Update file input attributes for directory selection
-  function updateFileInputAttributes() {
-    if (uploadFolderRadio.checked) {
-      if (!isDirectorySupported()) {
-        showToast("您的浏览器不支持文件夹选择功能", 3000, true);
-        uploadFileRadio.checked = true;
-        return;
-      }
-      
-      // Safari 需要特殊处理
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isSafari) {
-        fileInput.setAttribute("multiple", "");
-        // Safari 15+ 支持
-        if ('webkitEntries' in fileInput) {
-          fileInput.setAttribute("webkitdirectory", "");
-        } else {
-          showToast("您的Safari版本不支持文件夹选择，请升级浏览器", 3000, true);
-          uploadFileRadio.checked = true;
-          return;
-        }
-      } else {
-        fileInput.setAttribute("webkitdirectory", "");
-        fileInput.setAttribute("directory", "");
-        fileInput.setAttribute("mozdirectory", "");
-        fileInput.setAttribute("multiple", "");
-      }
-    } else {
-      fileInput.removeAttribute("webkitdirectory");
-      fileInput.removeAttribute("directory");
-      fileInput.removeAttribute("mozdirectory");
-      fileInput.setAttribute("multiple", "");
-    }
-  }
-
-  // Add change event listeners to radio buttons
-  [uploadFileRadio, uploadFolderRadio].forEach(radio => {
-    radio.addEventListener("change", () => {
-      updateFileInputAttributes();
-      // Clear the file input when switching modes
-      fileInput.value = '';
-      fileHandler.selectedFiles.clear();
-      fileList.innerHTML = '';
-      fileHandler.updateSendButton();
-    });
-  });
-
-  // Initialize file input attributes
-  updateFileInputAttributes();
-
-  // Back button
-  backButton.addEventListener("click", showPeersList);
-
-  // File input change handler
-  fileInput.addEventListener('change', (event) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      // 检查是否是文件夹模式
-      if (uploadFolderRadio.checked && !files[0].webkitRelativePath) {
-        showToast("请选择文件夹而不是单个文件", 3000, true);
-        return;
-      }
-      fileHandler.handleFileSelect(files);
-    }
-  });
-
-  // File drop area
-  fileDropArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.add('drag-over');
-  });
-
-  fileDropArea.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.remove('drag-over');
-  });
-
-  fileDropArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fileDropArea.classList.remove('drag-over');
+document.addEventListener("DOMContentLoaded", function() {
+    // 检测浏览器支持
+    checkBrowserSupport();
     
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-        fileHandler.selectedFiles.clear();
-        files.forEach(file => {
-            fileHandler.selectedFiles.add(file);
+    // 初始化文件处理器
+    fileHandler = new FileHandler();
+    fileHandler.initTransferProgress(); // 初始化传输进度UI
+    
+    // 初始化连接管理器
+    connectionManager = new ConnectionManager(fileHandler);
+
+    // 创建语言选择器
+    createLanguageSelector("language-container");
+
+    // 初始化页面文本
+    updatePageText();
+
+    // Message input placeholder
+    messageInput.placeholder = __("typeMessage");
+
+    // Tab switching
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+            // Remove active class from all tabs and contents
+            tabs.forEach((t) => t.classList.remove("active"));
+            tabContents.forEach((c) => c.classList.remove("active"));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add("active");
+            document.getElementById(`${tab.dataset.tab}-tab`).classList.add("active");
         });
+    });
+
+    const fileInput = document.getElementById('file-input');
+    const uploadFileRadio = document.getElementById("upload-file");
+    const uploadFolderRadio = document.getElementById("upload-folder");
+
+    // 检测浏览器是否支持文件夹选择
+    const isDirectorySupported = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        return 'webkitdirectory' in input || 'directory' in input || 'mozdirectory' in input;
+    };
+
+    // Update file input attributes for directory selection
+    function updateFileInputAttributes() {
+        if (uploadFolderRadio.checked) {
+            if (!isDirectorySupported()) {
+                showToast("您的浏览器不支持文件夹选择功能", 3000, true);
+                uploadFileRadio.checked = true;
+                return;
+            }
+            
+            // Safari 需要特殊处理
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            if (isSafari) {
+                fileInput.setAttribute("multiple", "");
+                // Safari 15+ 支持
+                if ('webkitEntries' in fileInput) {
+                    fileInput.setAttribute("webkitdirectory", "");
+                } else {
+                    showToast("您的Safari版本不支持文件夹选择，请升级浏览器", 3000, true);
+                    uploadFileRadio.checked = true;
+                    return;
+                }
+            } else {
+                fileInput.setAttribute("webkitdirectory", "");
+                fileInput.setAttribute("directory", "");
+                fileInput.setAttribute("mozdirectory", "");
+                fileInput.setAttribute("multiple", "");
+            }
+        } else {
+            fileInput.removeAttribute("webkitdirectory");
+            fileInput.removeAttribute("directory");
+            fileInput.removeAttribute("mozdirectory");
+            fileInput.setAttribute("multiple", "");
+        }
+    }
+
+    // Add change event listeners to radio buttons
+    [uploadFileRadio, uploadFolderRadio].forEach(radio => {
+        radio.addEventListener("change", () => {
+            updateFileInputAttributes();
+            // Clear the file input when switching modes
+            fileInput.value = '';
+            fileHandler.selectedFiles.clear();
+            fileList.innerHTML = '';
+            fileHandler.updateSendButton();
+        });
+    });
+
+    // Initialize file input attributes
+    updateFileInputAttributes();
+
+    // Back button
+    backButton.addEventListener("click", showPeersList);
+
+    // File input change handler
+    fileInput.addEventListener('change', (event) => {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            // 检查是否是文件夹模式
+            if (uploadFolderRadio.checked && !files[0].webkitRelativePath) {
+                showToast("请选择文件夹而不是单个文件", 3000, true);
+                return;
+            }
+            fileHandler.handleFileSelect(files);
+        }
+    });
+
+    // File drop area
+    fileDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileDropArea.classList.add('drag-over');
+    });
+
+    fileDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileDropArea.classList.remove('drag-over');
+    });
+
+    fileDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileDropArea.classList.remove('drag-over');
         
-        // Update send button state
-        sendFileBtn.disabled = false;
-        sendFileBtn.style.backgroundColor = 'var(--primary-color)';
-        sendFileBtn.style.cursor = 'pointer';
-        
-        // Update file list UI
-        updateFileList();
-    }
-  });
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            fileHandler.selectedFiles.clear();
+            files.forEach(file => {
+                fileHandler.selectedFiles.add(file);
+            });
+            
+            // Update send button state
+            sendFileBtn.disabled = false;
+            sendFileBtn.style.backgroundColor = 'var(--primary-color)';
+            sendFileBtn.style.cursor = 'pointer';
+            
+            // Update file list UI
+            updateFileList();
+        }
+    });
 
-  // Send file button
-  sendFileBtn.addEventListener("click", () => fileHandler.sendFiles());
+    // Send file button
+    sendFileBtn.addEventListener("click", () => fileHandler.sendFiles());
 
-  // Send message button
-  sendMessageBtn.addEventListener("click", sendMessage);
+    // Send message button
+    sendMessageBtn.addEventListener("click", sendMessage);
 
-  // Message input enter key
-  messageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      sendMessage();
-    }
-  });
+    // Message input enter key
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
 
-  // Close modal
-  document.querySelector(".close-modal").addEventListener("click", () => {
-    filePreviewModal.classList.add("hidden");
-  });
+    // Close modal
+    document.querySelector(".close-modal").addEventListener("click", () => {
+        filePreviewModal.classList.add("hidden");
+    });
 
-  // Close modal when clicking outside
-  filePreviewModal.addEventListener("click", (e) => {
-    if (e.target === filePreviewModal) {
-      filePreviewModal.classList.add("hidden");
-    }
-  });
+    // Close modal when clicking outside
+    filePreviewModal.addEventListener("click", (e) => {
+        if (e.target === filePreviewModal) {
+            filePreviewModal.classList.add("hidden");
+        }
+    });
 });
 
 // 添加语言变更事件监听器
@@ -2156,4 +2316,46 @@ function retryWithExponentialBackoff(fn, maxRetries = 3, initialDelay = 500) {
             }
         }
     });
+}
+
+// 检测浏览器是否支持必要的功能
+function checkBrowserSupport() {
+    // 检查WebRTC支持
+    let hasWebRTC = 'RTCPeerConnection' in window;
+    
+    // 检查WebSocket支持
+    let hasWebSockets = 'WebSocket' in window;
+    
+    // 检查必要的API支持
+    let hasRequiredAPIs = 
+        'File' in window && 
+        'FileReader' in window && 
+        'Blob' in window && 
+        'URL' in window && 
+        'createObjectURL' in URL;
+    
+    if (!hasWebRTC || !hasWebSockets || !hasRequiredAPIs) {
+        let message = `您的浏览器不支持必要的功能, 请升级您的浏览器。`;
+        console.error(message);
+        if (typeof showToast === 'function') {
+            showToast(message, 5000, true);
+        } else {
+            alert(message);
+        }
+        return false;
+    }
+    
+    // 检查WebRTC实现是否完整
+    let isWebRTCComplete = 
+        'getUserMedia' in navigator.mediaDevices || 
+        'webkitGetUserMedia' in navigator || 
+        'mozGetUserMedia' in navigator || 
+        'msGetUserMedia' in navigator;
+    
+    if (!isWebRTCComplete) {
+        console.warn("您的浏览器WebRTC支持可能不完整，某些功能可能受限");
+    }
+    
+    console.log("浏览器功能检测通过");
+    return true;
 }
