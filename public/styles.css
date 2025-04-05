@@ -15,6 +15,14 @@
   --warning-color: #f39c12;
   --text-color: #333;
   --text-light: #777;
+  --text-secondary: #888;
+  
+  /* 文件历史相关变量 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --border-color: #e1e4e8;
+  --success-rgb: 46, 204, 113;
+  --primary-rgb: 52, 152, 219;
   
   /* 尺寸变量 */
   --spacing-xs: 5px;
@@ -688,32 +696,46 @@ main {
 }
 
 /* 提示框 */
-.toast {
+#toast {
   position: fixed;
   bottom: 20px;
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background-color: var(--secondary-color);
-  color: var(--white);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--border-radius-sm);
-  box-shadow: var(--shadow-lg);
-  z-index: 1001;
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
-  opacity: 0;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 90%;
 }
 
-.toast:not(.hidden) {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+.toast-message {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-in-out;
+  margin-bottom: 4px;
+  max-width: 100%;
 }
 
-.toast.error {
-  background-color: var(--error-color);
+.toast-error {
+  background-color: rgba(220, 53, 69, 0.9);
 }
 
-.toast.success {
-  background-color: var(--success-color);
+.fade-out {
+  animation: fadeOut 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-20px); }
 }
 
 .hidden {
@@ -861,7 +883,13 @@ main {
     --gray-400: #999;
     --text-color: #eee;
     --text-light: #bbb;
+    --text-secondary: #999;
     --secondary-color: #a0c4ff;
+    
+    /* 文件历史暗色模式变量 */
+    --bg-primary: #252525;
+    --bg-secondary: #1e1e1e;
+    --border-color: #333;
   }
   
   .peer-item {
@@ -1171,6 +1199,14 @@ main {
   border: 1px solid var(--border-color);
 }
 
+.history-item.sent {
+  border-left: 3px solid var(--success-color);
+}
+
+.history-item.received {
+  border-left: 3px solid var(--primary-color);
+}
+
 .history-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -1185,6 +1221,7 @@ main {
 .file-icon-wrapper {
   width: 40px;
   height: 40px;
+  min-width: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1201,18 +1238,19 @@ main {
 
 .file-name {
   font-weight: 500;
-  margin-bottom: 0.25rem;
-  white-space: nowrap;
+  margin-bottom: 0.2rem;
+  word-break: break-word;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .file-meta {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  gap: 0.75rem;
+  color: var(--text-light);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .file-direction {
@@ -1237,6 +1275,8 @@ main {
 .file-actions {
   display: flex;
   gap: 0.5rem;
+  min-width: 80px;
+  justify-content: flex-end;
 }
 
 .action-btn {
@@ -1266,40 +1306,49 @@ main {
 
   .history-item {
     padding: 0.75rem;
-    margin-bottom: 0.5rem;
   }
 
   .history-item-content {
     gap: 0.75rem;
+    align-items: center;
   }
 
   .file-icon-wrapper {
-    width: 36px;
-    height: 36px;
-    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    font-size: 1rem;
   }
 
   .file-name {
-    font-size: 0.9rem;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    margin-bottom: 0.15rem;
   }
 
   .file-meta {
-    flex-wrap: wrap;
     gap: 0.5rem;
-    font-size: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .file-date {
+    display: none;
   }
 
   .file-direction {
     padding: 0.2rem 0.4rem;
-    font-size: 0.7rem;
+  }
+
+  .file-actions {
+    min-width: 70px;
+    justify-content: flex-end;
   }
 
   .action-btn {
     padding: 0.4rem;
-  }
-
-  .action-btn i {
-    font-size: 0.9rem;
   }
 }
 
@@ -1310,29 +1359,55 @@ main {
 
   .history-item {
     padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .history-item.sent {
+    border-left-width: 2px;
+  }
+  
+  .history-item.received {
+    border-left-width: 2px;
   }
 
   .history-item-content {
     gap: 0.5rem;
+    display: flex;
+    align-items: center;
   }
 
   .file-icon-wrapper {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    font-size: 0.9rem;
   }
 
   .file-name {
-    font-size: 0.85rem;
+    max-width: 140px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.1rem;
   }
 
   .file-meta {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 
   .file-direction {
+    font-size: 0.7rem;
     padding: 0.15rem 0.3rem;
-    font-size: 0.65rem;
+  }
+
+  .file-actions {
+    min-width: 60px;
+    justify-content: flex-end;
+    display: flex;
+    gap: 0.3rem;
   }
 
   .action-btn {
@@ -1340,7 +1415,7 @@ main {
   }
 
   .action-btn i {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 
   .empty-history i {
@@ -1350,4 +1425,94 @@ main {
   .empty-history p {
     font-size: 0.9rem;
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .file-direction.sent {
+    background: rgba(var(--success-rgb), 0.2);
+    color: var(--success-color);
+  }
+  
+  .file-direction.received {
+    background: rgba(var(--primary-rgb), 0.2);
+    color: var(--primary-color);
+  }
+}
+
+/* 连接状态图标 */
+.connection-status {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 500;
+  background-color: var(--bg-secondary);
+  color: var(--text-color);
+}
+
+.status-icon {
+  margin-right: 0.5rem;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-icon.connecting {
+  background-color: var(--warning-color);
+  position: relative;
+  animation: pulse 1.5s infinite;
+}
+
+.status-icon.connecting::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.status-icon.connected {
+  background-color: var(--success-color);
+  position: relative;
+}
+
+.status-icon.connected::before {
+  content: "✓";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.status-icon.disconnected {
+  background-color: var(--error-color);
+  position: relative;
+}
+
+.status-icon.disconnected::before {
+  content: "×";
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-icon.unknown {
+  background-color: var(--gray-400);
+  position: relative;
+}
+
+.status-icon.unknown::before {
+  content: "?";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
