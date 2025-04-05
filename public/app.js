@@ -150,6 +150,16 @@ const utils = {
             bytes[i] = binaryString.charCodeAt(i);
         }
         return new Blob([bytes], { type: type });
+    },
+    
+    // 计算传输超时时间，根据文件大小调整
+    calculateTransferTimeout(fileSize) {
+        const baseDuration = 30000; // 30秒基本超时
+        const sizeInMB = fileSize / (1024 * 1024);
+        // 每10MB增加30秒超时时间
+        const additionalTime = Math.floor(sizeInMB / 10) * 30000;
+        // 最长5分钟超时
+        return Math.min(baseDuration + additionalTime, 300000);
     }
 };
 
@@ -262,9 +272,25 @@ class FileHandler {
             return;
         }
 
+        // 获取所有要发送的文件
         const filesToSend = Array.from(this.selectedFiles);
+        // 显示总文件数
+        if (filesToSend.length > 1) {
+            showToast(`准备发送 ${filesToSend.length} 个文件`, 2000);
+        }
         
-        for (const file of filesToSend) {
+        // 保存发送状态，防止中断
+        const sendingState = {
+            totalFiles: filesToSend.length,
+            currentFileIndex: 0,
+            success: 0,
+            failed: 0
+        };
+        
+        for (let i = 0; i < filesToSend.length; i++) {
+            const file = filesToSend[i];
+            sendingState.currentFileIndex = i + 1;
+            
             try {
                 // 设置当前传输文件
                 this.currentTransfer = {
@@ -274,117 +300,173 @@ class FileHandler {
                     lastProgressUpdate: 0
                 };
 
-                const base64Data = await utils.readFileAsBase64(file);
-
-                // 发送文件信息
-                dataChannel.send(JSON.stringify({
-                    type: "file-info",
-                    info: {
-                        name: file.name,
-                        size: base64Data.length,
-                        type: file.type,
-                    },
-                }));
-
-                // 分块发送文件数据，使用流量控制
-                let offset = 0;
-                let lastProgressTime = Date.now();
-                const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-                
-                // 计算最佳缓冲区大小 - 动态根据文件大小调整
-                let MAX_BUFFER_SIZE;
-                if (file.size > 100 * 1024 * 1024) { // 100MB+
-                    MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
-                } else if (file.size > 20 * 1024 * 1024) { // 20MB+
-                    MAX_BUFFER_SIZE = 512 * 1024; // 512KB
-                } else {
-                    MAX_BUFFER_SIZE = 256 * 1024; // 256KB
+                // 显示当前正在发送的文件信息
+                if (filesToSend.length > 1) {
+                    showToast(`发送文件 ${i+1}/${filesToSend.length}: ${file.name}`, 2000);
                 }
-                
-                console.log(`文件大小: ${utils.formatFileSize(file.size)}, 使用缓冲区大小: ${utils.formatFileSize(MAX_BUFFER_SIZE)}`);
-                
-                // 动态等待时间计算函数 - 根据缓冲区填充程度调整等待时间
-                const calculateWaitTime = (bufferedAmount) => {
-                    const fillPercentage = bufferedAmount / MAX_BUFFER_SIZE;
-                    // 缓冲区越满，等待时间越长
-                    if (fillPercentage > 0.9) return 300;
-                    if (fillPercentage > 0.7) return 200;
-                    if (fillPercentage > 0.5) return 150;
-                    return 100;
-                };
-                
-                // 使用队列和流量控制机制发送数据
-                while (offset < base64Data.length) {
-                    // 检查数据通道状态
-                    if (dataChannel.readyState !== "open") {
-                        throw new Error("数据通道已关闭");
-                    }
-                    
-                    // 检查缓冲区是否已满，如果满了则等待缓冲区清空
-                    if (dataChannel.bufferedAmount > MAX_BUFFER_SIZE) {
-                        const waitTime = calculateWaitTime(dataChannel.bufferedAmount);
-                        if (dataChannel.bufferedAmount > MAX_BUFFER_SIZE * 1.5) {
-                            console.log(`缓冲区严重溢出 (${dataChannel.bufferedAmount} bytes), 等待 ${waitTime}ms...`);
-                        }
-                        // 等待缓冲区减少
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
-                        continue; // 跳过本次循环，重新检查缓冲区
-                    }
 
-                    const chunk = base64Data.slice(offset, offset + CHUNK_SIZE);
-                    
-                    // 发送数据块
+                // 设置传输超时，大文件给更长的超时时间
+                const fileTransferTimeout = setTimeout(() => {
+                    if (this.currentTransfer && this.currentTransfer.file === file) {
+                        throw new Error("文件传输超时");
+                    }
+                }, utils.calculateTransferTimeout(file.size));
+
+                try {
+                    // 读取文件数据
+                    const base64Data = await utils.readFileAsBase64(file);
+
+                    // 发送文件信息
                     dataChannel.send(JSON.stringify({
-                        type: "file-data",
-                        chunk: chunk,
+                        type: "file-info",
+                        info: {
+                            name: file.name,
+                            size: base64Data.length,
+                            type: file.type,
+                        },
                     }));
 
-                    offset += CHUNK_SIZE;
+                    // 直接开始发送文件数据，不等待确认
+                    // 添加小延迟让接收方有时间设置接收状态
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // 分块发送文件数据，使用流量控制
+                    let offset = 0;
+                    let lastProgressTime = Date.now();
                     
-                    // 更新传输进度，但降低频率
-                    this.currentTransfer.sentSize = offset;
-                    const now = Date.now();
-                    if (now - lastProgressTime > PROGRESS_UPDATE_INTERVAL) {
-                        const progress = Math.min(Math.round((offset / base64Data.length) * 100), 99);
-                        showToast(`正在发送 ${file.name}: ${progress}%`, 1000);
-                        lastProgressTime = now;
+                    // 计算最佳缓冲区大小 - 动态根据文件大小调整
+                    let MAX_BUFFER_SIZE;
+                    if (file.size > 100 * 1024 * 1024) { // 100MB+
+                        MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
+                    } else if (file.size > 20 * 1024 * 1024) { // 20MB+
+                        MAX_BUFFER_SIZE = 512 * 1024; // 512KB
+                    } else {
+                        MAX_BUFFER_SIZE = 256 * 1024; // 256KB
+                    }
+                    
+                    console.log(`文件大小: ${utils.formatFileSize(file.size)}, 使用缓冲区大小: ${utils.formatFileSize(MAX_BUFFER_SIZE)}`);
+                    
+                    // 动态等待时间计算函数 - 根据缓冲区填充程度调整等待时间
+                    const calculateWaitTime = (bufferedAmount) => {
+                        const fillPercentage = bufferedAmount / MAX_BUFFER_SIZE;
+                        // 缓冲区越满，等待时间越长
+                        if (fillPercentage > 0.9) return 300;
+                        if (fillPercentage > 0.7) return 200;
+                        if (fillPercentage > 0.5) return 150;
+                        return 100;
+                    };
+                    
+                    // 使用队列和流量控制机制发送数据
+                    while (offset < base64Data.length) {
+                        // 检查数据通道状态
+                        if (dataChannel.readyState !== "open") {
+                            clearTimeout(fileTransferTimeout);
+                            throw new Error("数据通道已关闭");
+                        }
                         
-                        // 大文件传输时，显示缓冲区状态
-                        if (file.size > 20 * 1024 * 1024) {
-                            console.log(`传输进度: ${progress}%, 缓冲区: ${dataChannel.bufferedAmount} bytes`);
+                        // 检查缓冲区是否已满，如果满了则等待缓冲区清空
+                        if (dataChannel.bufferedAmount > MAX_BUFFER_SIZE) {
+                            const waitTime = calculateWaitTime(dataChannel.bufferedAmount);
+                            if (dataChannel.bufferedAmount > MAX_BUFFER_SIZE * 1.5) {
+                                console.log(`缓冲区严重溢出 (${dataChannel.bufferedAmount} bytes), 等待 ${waitTime}ms...`);
+                            }
+                            // 等待缓冲区减少
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
+                            continue; // 跳过本次循环，重新检查缓冲区
+                        }
+
+                        const chunk = base64Data.slice(offset, offset + CHUNK_SIZE);
+                        
+                        // 发送数据块
+                        dataChannel.send(JSON.stringify({
+                            type: "file-data",
+                            chunk: chunk,
+                        }));
+
+                        offset += CHUNK_SIZE;
+                        
+                        // 更新传输进度，但降低频率
+                        this.currentTransfer.sentSize = offset;
+                        const now = Date.now();
+                        if (now - lastProgressTime > PROGRESS_UPDATE_INTERVAL) {
+                            const progress = Math.min(Math.round((offset / base64Data.length) * 100), 99);
+                            // 多文件发送时显示当前文件和总文件数
+                            if (filesToSend.length > 1) {
+                                showToast(`发送 ${file.name} (${i+1}/${filesToSend.length}): ${progress}%`, 1000);
+                            } else {
+                                showToast(`正在发送 ${file.name}: ${progress}%`, 1000);
+                            }
+                            lastProgressTime = now;
+                            
+                            // 大文件传输时，显示缓冲区状态
+                            if (file.size > 20 * 1024 * 1024) {
+                                console.log(`传输进度: ${progress}%, 缓冲区: ${dataChannel.bufferedAmount} bytes`);
+                            }
+                        }
+                        
+                        // 每发送10个数据块，给一个小延迟让网络"喘息"
+                        if (offset % (CHUNK_SIZE * 10) === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1));
                         }
                     }
-                    
-                    // 每发送10个数据块，给一个小延迟让网络"喘息"
-                    if (offset % (CHUNK_SIZE * 10) === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 1));
-                    }
+
+                    // 发送完成，清除传输超时
+                    clearTimeout(fileTransferTimeout);
+
+                    this.addFileToHistory({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: file,
+                        to: selectedPeer.id,
+                        direction: "sent",
+                        timestamp: new Date().toISOString(),
+                    });
+
+                    // 发送"文件完成"消息，让接收方知道文件已完整发送
+                    dataChannel.send(JSON.stringify({
+                        type: "file-complete",
+                        filename: file.name,
+                        timestamp: Date.now()
+                    }));
+
+                    sendingState.success++;
+                } catch (error) {
+                    clearTimeout(fileTransferTimeout);
+                    throw error;
                 }
-
-                this.addFileToHistory({
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    data: file,
-                    to: selectedPeer.id,
-                    direction: "sent",
-                    timestamp: new Date().toISOString(),
-                });
-
-                showToast(`i18n:fileSentSuccessfully:${file.name}`);
                 
+                // 在每个文件之间添加小延迟，让接收方处理完成
+                if (i < filesToSend.length - 1) {
+                    // 长文件传输后需要更长的间隔
+                    const delayTime = file.size > 10 * 1024 * 1024 ? 2000 : 1000;
+                    console.log(`等待 ${delayTime}ms 后发送下一个文件...`);
+                    await new Promise(resolve => setTimeout(resolve, delayTime));
+                }
+            } catch (error) {
+                console.error(`发送文件 ${file.name} 时出错:`, error);
+                showToast(`文件 ${file.name} 发送失败: ${error.message}`, 3000, true);
+                sendingState.failed++;
+            } finally {
                 // 清理当前传输
                 this.currentTransfer = null;
-            } catch (error) {
-                console.error("发送文件时出错:", error);
-                showToast(`i18n:errorSendingFile:${error.message}`);
-                this.currentTransfer = null;
             }
+        }
+        
+        // 所有文件发送完成后显示汇总
+        if (filesToSend.length > 1) {
+            if (sendingState.failed > 0) {
+                showToast(`发送完成: ${sendingState.success}个成功, ${sendingState.failed}个失败`, 3000);
+            } else {
+                showToast(`所有${filesToSend.length}个文件发送成功`, 3000);
+            }
+        } else if (sendingState.success === 1) {
+            showToast(`i18n:fileSentSuccessfully:${filesToSend[0].name}`);
         }
 
         this.resetFileSelection();
     }
-
+    
     resetFileSelection() {
         fileInput.value = "";
         this.selectedFiles.clear();
@@ -435,15 +517,15 @@ class FileHandler {
         // 检测是否为移动设备
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        // 文件名可能过长，对于移动端进行截断处理
+        // 文件名处理，根据设备类型截断长度
         let displayName = file.name;
-        // 如果是移动设备，并且文件名长度超过18个字符，进行截断
+        const extension = displayName.lastIndexOf('.') > -1 ? 
+            displayName.substring(displayName.lastIndexOf('.')) : '';
+        const baseName = extension ? 
+            displayName.substring(0, displayName.lastIndexOf('.')) : displayName;
+        
+        // 移动设备使用较短的截断长度
         if (isMobile && displayName.length > 18) {
-            const extension = displayName.lastIndexOf('.') > -1 ? 
-                displayName.substring(displayName.lastIndexOf('.')) : '';
-            const baseName = extension ? 
-                displayName.substring(0, displayName.lastIndexOf('.')) : displayName;
-            
             // 如果有扩展名，保留扩展名，截断中间部分
             if (extension) {
                 if (baseName.length > 12) {
@@ -452,6 +534,18 @@ class FileHandler {
             } else {
                 // 没有扩展名，直接截断
                 displayName = displayName.substring(0, 15) + '...';
+            }
+        } 
+        // PC端使用较长的截断长度，避免过长文件名导致布局错乱
+        else if (!isMobile && displayName.length > 40) {
+            // 如果有扩展名，保留扩展名，截断中间部分
+            if (extension) {
+                if (baseName.length > 36) {
+                    displayName = baseName.substring(0, 32) + '...' + extension;
+                }
+            } else {
+                // 没有扩展名，直接截断
+                displayName = displayName.substring(0, 37) + '...';
             }
         }
 
@@ -517,6 +611,7 @@ class ConnectionManager {
         this.transferTimeout = null;
         this.lastProgressUpdate = 0;
         this.heartbeatInterval = null;
+        this.receivingQueue = []; // 添加文件接收队列
     }
 
     createPeerConnection(peerId, turnOnly = false) {
@@ -1033,20 +1128,24 @@ class ConnectionManager {
                 return;
             }
             
+            // 处理文件完成消息
+            if (data.type === "file-complete") {
+                console.log(`收到文件 ${data.filename} 传输完成信号`);
+                
+                // 如果是当前文件，可能是传输过程提前结束，检查数据完整性
+                if (this.currentFileInfo && this.currentFileInfo.name === data.filename) {
+                    const currentFile = this.receivedData[this.currentFileInfo.name];
+                    if (currentFile && currentFile.receivedSize < this.currentFileInfo.size) {
+                        console.warn(`文件 ${data.filename} 数据不完整，已接收 ${currentFile.receivedSize}/${this.currentFileInfo.size} 字节`);
+                    }
+                }
+                return;
+            }
+            
             // 处理错误报告
             if (data.type === "error") {
                 console.error(`接收到对方错误报告: ${data.message}`);
                 showToast(`传输错误: ${data.message}`, 3000, true);
-                return;
-            }
-            
-            // 处理传输状态确认
-            if (data.type === "transfer_ack") {
-                console.log(`收到传输确认: ${data.status}`, data);
-                if (data.status === "error" && fileHandler.currentTransfer) {
-                    showToast(`对方接收文件时出错: ${data.message}`, 3000, true);
-                    fileHandler.currentTransfer = null;
-                }
                 return;
             }
             
@@ -1078,33 +1177,24 @@ class ConnectionManager {
     // 安全处理文件信息，带错误处理和确认机制
     handleFileInfoSafely(fileInfo, peerId) {
         try {
-            // 检查是否已有传输任务
-            if (this.currentFileInfo) {
-                // 正在接收另一个文件，拒绝新的传输
-                const peerConnection = this.peerConnections[peerId];
-                if (peerConnection && peerConnection.dataChannel && peerConnection.dataChannel.readyState === "open") {
-                    peerConnection.dataChannel.send(JSON.stringify({
-                        type: "transfer_ack",
-                        status: "error",
-                        message: "正在接收其他文件，请稍后再试",
-                        timestamp: Date.now()
-                    }));
+            // 添加接收确认日志
+            console.log(`收到文件传输请求: ${fileInfo.name}, 大小: ${utils.formatFileSize(fileInfo.size)}`);
+            
+            // 检查是否已有传输任务，但允许多文件队列
+            if (this.currentFileInfo && this.receivingQueue && this.receivingQueue.length < 10) {
+                // 我们当前正在接收一个文件，但可以将此文件加入队列
+                console.log(`正在接收文件，将 ${fileInfo.name} 加入队列...`);
+                if (!this.receivingQueue) {
+                    this.receivingQueue = [];
                 }
+                this.receivingQueue.push({fileInfo, peerId});
                 return;
             }
             
             // 检查文件大小是否合理
             const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
             if (fileInfo.size > MAX_FILE_SIZE) {
-                const peerConnection = this.peerConnections[peerId];
-                if (peerConnection && peerConnection.dataChannel && peerConnection.dataChannel.readyState === "open") {
-                    peerConnection.dataChannel.send(JSON.stringify({
-                        type: "transfer_ack",
-                        status: "error",
-                        message: "文件过大，超过限制",
-                        timestamp: Date.now()
-                    }));
-                }
+                console.error(`文件过大，超过限制: ${fileInfo.name}`);
                 return;
             }
             
@@ -1117,32 +1207,11 @@ class ConnectionManager {
                 startTime: Date.now()
             };
             
-            console.log(`开始接收文件: ${fileInfo.name}, 大小: ${fileInfo.size}`);
+            console.log(`开始接收文件: ${fileInfo.name}, 大小: ${utils.formatFileSize(fileInfo.size)}`);
             showToast(`i18n:receivingFile:${fileInfo.name}`);
             
-            // 发送确认消息
-            const peerConnection = this.peerConnections[peerId];
-            if (peerConnection && peerConnection.dataChannel && peerConnection.dataChannel.readyState === "open") {
-                peerConnection.dataChannel.send(JSON.stringify({
-                    type: "transfer_ack",
-                    status: "ok",
-                    filename: fileInfo.name,
-                    timestamp: Date.now()
-                }));
-            }
         } catch (error) {
             console.error("处理文件信息时出错:", error);
-            
-            // 发送错误消息给对方
-            const peerConnection = this.peerConnections[peerId];
-            if (peerConnection && peerConnection.dataChannel && peerConnection.dataChannel.readyState === "open") {
-                peerConnection.dataChannel.send(JSON.stringify({
-                    type: "transfer_ack",
-                    status: "error",
-                    message: `处理文件信息时出错: ${error.message}`,
-                    timestamp: Date.now()
-                }));
-            }
         }
     }
     
@@ -1232,6 +1301,18 @@ class ConnectionManager {
             delete this.receivedData[fileInfo.name];
             this.currentFileInfo = null;
             
+            // 检查队列中是否有其他文件等待处理
+            if (this.receivingQueue && this.receivingQueue.length > 0) {
+                // 处理队列中的下一个文件
+                const nextTransfer = this.receivingQueue.shift();
+                console.log(`处理队列中的下一个文件: ${nextTransfer.fileInfo.name}`);
+                
+                // 给一个小延迟，让系统有机会喘息
+                setTimeout(() => {
+                    this.handleFileInfoSafely(nextTransfer.fileInfo, nextTransfer.peerId);
+                }, 200);
+            }
+            
             // 手动触发垃圾回收
             if (typeof window.gc === 'function') {
                 window.gc();
@@ -1243,6 +1324,15 @@ class ConnectionManager {
             // 清理资源
             delete this.receivedData[this.currentFileInfo.name];
             this.currentFileInfo = null;
+            
+            // 检查队列中是否有其他文件等待处理
+            if (this.receivingQueue && this.receivingQueue.length > 0) {
+                // 处理队列中的下一个文件
+                const nextTransfer = this.receivingQueue.shift();
+                setTimeout(() => {
+                    this.handleFileInfoSafely(nextTransfer.fileInfo, nextTransfer.peerId);
+                }, 200);
+            }
         }
     }
 }
