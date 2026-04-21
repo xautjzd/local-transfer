@@ -44,7 +44,7 @@ function initializeConnection() {
 }
 
 // Initialize the connection when page loads
-initializeConnection();
+// NOTE: initializeConnection is now called inside DOMContentLoaded after socket listeners are registered
 
 // Global variables
 let myInfo = null;
@@ -1491,136 +1491,10 @@ class ConnectionManager {
     }
 }
 
-// Initialize when connected to the server
-socket.on("init", (data) => {
-  // Store user info
-  myInfo = data;
-
-  // Save the user name to localStorage for persistence
-  localStorage.setItem("localTransferUserName", data.name);
-
-  // Update UI with user info
-  userNameElement.textContent = data.name;
-  avatarTextElement.textContent = utils.getInitials(data.name);
-
-  // Update page text with current language
-  updatePageText();
-
-  // Clear existing peers list to prevent duplicates
-  peersList.innerHTML = "";
-
-  // Reset peer connections to ensure clean state
-  Object.keys(peerConnections).forEach((id) => {
-    if (peerConnections[id]) {
-      peerConnections[id].close();
-    }
-  });
-  peerConnections = {};
-
-  // Update the peers list with existing clients
-  updatePeersList(data.clients);
-});
-
-// Handle new client joining
-socket.on("client-joined", (client) => {
-  // Add the new client to the peers list
-  addPeerToList(client);
-  showToast(`${client.name} ${__("joined")}`);
-});
-
-// Handle client leaving
-socket.on("client-left", (clientId) => {
-  // Remove the client from the peers list
-  const peerElement = document.getElementById(`peer-${clientId}`);
-  if (peerElement) {
-    const peerName = peerElement.querySelector(".name").textContent;
-    peerElement.remove();
-    showToast(`${peerName} ${__("left")}`);
-
-    // If the selected peer left, go back to the peers list
-    if (selectedPeer && selectedPeer.id === clientId) {
-      showPeersList();
-    }
-
-    // Clean up peer connection if it exists
-    if (peerConnections[clientId]) {
-      peerConnections[clientId].close();
-      delete peerConnections[clientId];
-    }
-  }
-
-  // Update the no peers message if needed
-  updateNoPeersMessage();
-});
-
-// Handle incoming WebRTC signals
-socket.on("signal", async (data) => {
-    const { from, signal } = data;
-
-    // If we don't have a peer connection with this client yet, create one
-    if (!connectionManager.peerConnections[from]) {
-        connectionManager.createPeerConnection(from);
-    }
-
-    try {
-        const peerConnection = connectionManager.peerConnections[from];
-        if (!peerConnection) {
-            console.error("No peer connection found for:", from);
-            return;
-        }
-
-        // Process the signal based on its type
-        if (signal.type === "offer") {
-            await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-            );
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-
-            // Send the answer back to the peer
-            socket.emit("signal", {
-                to: from,
-                signal: peerConnection.localDescription,
-            });
-        } else if (signal.type === "answer") {
-            await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(signal)
-            );
-        } else if (signal.type === "candidate") {
-            await peerConnection.addIceCandidate(
-                new RTCIceCandidate(signal.candidate)
-            );
-        }
-    } catch (error) {
-        console.error("Error processing signal:", error);
-    }
-});
-
-// Handle incoming messages
-socket.on("receive-message", (data) => {
-  addMessageToList(data, false);
-
-  // If the message is from the selected peer, mark as read
-  if (selectedPeer && data.from === selectedPeer.id) {
-    // Already showing in the current chat
-  } else {
-    // Show notification or highlight the peer in the list
-    const peerElement = document.getElementById(`peer-${data.from}`);
-    if (peerElement) {
-      peerElement.classList.add("has-notification");
-    }
-
-    showToast(`i18n:${__("newMessageFrom")}:${data.fromName}`);
-  }
-});
-
 // Update the peers list with clients
 function updatePeersList(clients) {
   // Clear the current list
-  const noPeersElement = peersList.querySelector(".no-peers");
-  if (noPeersElement) {
-    peersList.innerHTML = "";
-  }
+  peersList.innerHTML = "";
 
   // Add each client to the list
   clients.forEach((client) => {
@@ -1680,10 +1554,10 @@ function addPeerToList(peer) {
     }
   }
 
-  // Remove the no peers message if it exists
-  const noPeersElement = peersList.querySelector(".no-peers");
-  if (noPeersElement) {
-    noPeersElement.remove();
+  // Remove the empty state message if it exists
+  const emptyStateElement = peersList.querySelector(".empty-state");
+  if (emptyStateElement) {
+    emptyStateElement.remove();
   }
 
   // Create the peer element
@@ -1709,15 +1583,69 @@ function addPeerToList(peer) {
 // Update the no peers message
 function updateNoPeersMessage() {
   if (peersList.children.length === 0) {
-    peersList.innerHTML = `<div class="no-peers" data-i18n="waitingForPeople">${__(
-      "waitingForPeople"
-    )}</div>`;
+    peersList.innerHTML = `
+      <div class="empty-state">
+        <div class="header-content">
+          <div class="no-peers" data-i18n="waitingForPeople">
+              ${__("waitingForPeople")}
+          </div>
+          <p class="waiting-description" data-i18n="waitingDescription">
+              ${__("waitingDescription")}
+          </p>
+        </div>
+        
+        <div class="compact-guide">
+          <!-- 连接指南部分 -->
+          <div class="guide-section">
+            <h3 data-i18n="howToUse">${__("howToUse")}</h3>
+            <div class="steps-compact">
+              <p data-i18n="step1">${__("step1")}</p>
+              <p data-i18n="step2">${__("step2")}</p>
+              <p data-i18n="step3">${__("step3")}</p>
+              <p data-i18n="step4">${__("step4")}</p>
+            </div>
+          </div>
+          
+          <!-- 二维码扫描 -->
+          <div class="quick-connect-item qr-only">
+            <div class="quick-connect-header">
+              <i class="fas fa-qrcode"></i>
+              <h4 data-i18n="scanQRCode">${__("scanQRCode")}</h4>
+            </div>
+            <div id="qrcode" class="qrcode-compact"></div>
+          </div>
+          
+          <!-- 网络提示与常见问题 -->
+          <div class="quick-help">
+            <div class="quick-help-header">
+              <i class="fas fa-info-circle"></i>
+              <h4 data-i18n="troubleshooting">${__("troubleshooting")}</h4>
+            </div>
+            <ul class="help-tips">
+              <li data-i18n="networkIssue1">${__("networkIssue1")}</li>
+              <li data-i18n="networkIssue2">${__("networkIssue2")}</li>
+              <li data-i18n="networkIssue3">${__("networkIssue3")}</li>
+            </ul>
+          </div>
+        </div>
+      </div>`;
+    
+    // 动态生成QR码
+    generateQRCode();
   }
 }
 
 // Select a peer to communicate with
 function selectPeer(peer) {
     console.log('选择对等方:', peer);
+
+    // Guard against null connectionManager
+    if (!connectionManager) {
+        console.warn('ConnectionManager not initialized yet, please wait');
+        showToast(__('connectionNotReady'), 3000);
+        return;
+    }
+
     selectedPeer = peer;
     connectionManager.selectedPeer = peer;
 
@@ -1730,7 +1658,9 @@ function selectPeer(peer) {
     transferContainer.classList.remove("hidden");
 
     // 在显示传输容器之后，更新文件历史显示
-    fileHandler.updateFileHistoryDisplay(peer.id);
+    if (fileHandler) {
+        fileHandler.updateFileHistoryDisplay(peer.id);
+    }
 
     // Clear any notification for this peer
     const peerElement = document.getElementById(`peer-${peer.id}`);
@@ -1761,7 +1691,9 @@ function selectPeer(peer) {
 
     // Reset the file input
     fileInput.value = "";
-    fileHandler.selectedFiles.clear();
+    if (fileHandler && fileHandler.selectedFiles) {
+        fileHandler.selectedFiles.clear();
+    }
     sendFileBtn.disabled = true;
 }
 
@@ -2014,8 +1946,10 @@ function updateConnectionStatus(status, peerId = null, timeoutReason = null) {
         fileTransferArea.insertBefore(statusElement, fileDropArea);
     }
 
-    // Update send button state
-    fileHandler.updateSendButton();
+    // Update send button state (guard against null fileHandler)
+    if (fileHandler) {
+        fileHandler.updateSendButton();
+    }
 }
 
 // Event listeners
@@ -2030,11 +1964,119 @@ document.addEventListener("DOMContentLoaded", function() {
     // 初始化连接管理器
     connectionManager = new ConnectionManager(fileHandler);
 
+    // Socket.IO event listeners - moved here to ensure connectionManager is initialized first
+    socket.on("init", (data) => {
+        // Store user info
+        myInfo = data;
+
+        // Save the user name to localStorage for persistence
+        localStorage.setItem("localTransferUserName", data.name);
+
+        // Update UI with user info
+        userNameElement.textContent = data.name;
+        avatarTextElement.textContent = utils.getInitials(data.name);
+
+        // Update page text with current language
+        updatePageText();
+
+        // Clear existing peers list to prevent duplicates
+        peersList.innerHTML = "";
+
+        // Reset peer connections to ensure clean state
+        Object.keys(peerConnections).forEach((id) => {
+            if (peerConnections[id]) {
+                peerConnections[id].close();
+            }
+        });
+        peerConnections = {};
+
+        // Update the peers list with existing clients
+        updatePeersList(data.clients);
+    });
+
+    socket.on("client-joined", (client) => {
+        addPeerToList(client);
+        showToast(`${client.name} ${__("joined")}`);
+    });
+
+    socket.on("client-left", (clientId) => {
+        const peerElement = document.getElementById(`peer-${clientId}`);
+        if (peerElement) {
+            const peerName = peerElement.querySelector(".name").textContent;
+            peerElement.remove();
+            showToast(`${peerName} ${__("left")}`);
+
+            if (selectedPeer && selectedPeer.id === clientId) {
+                showPeersList();
+            }
+
+            if (peerConnections[clientId]) {
+                peerConnections[clientId].close();
+                delete peerConnections[clientId];
+            }
+        }
+        updateNoPeersMessage();
+    });
+
+    socket.on("signal", async (data) => {
+        const { from, signal } = data;
+        if (!connectionManager.peerConnections[from]) {
+            connectionManager.createPeerConnection(from);
+        }
+        try {
+            const peerConnection = connectionManager.peerConnections[from];
+            if (!peerConnection) {
+                console.error("No peer connection found for:", from);
+                return;
+            }
+            if (signal.type === "offer") {
+                await peerConnection.setRemoteDescription(
+                    new RTCSessionDescription(signal)
+                );
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit("signal", {
+                    to: from,
+                    signal: peerConnection.localDescription,
+                });
+            } else if (signal.type === "answer") {
+                await peerConnection.setRemoteDescription(
+                    new RTCSessionDescription(signal)
+                );
+            } else if (signal.type === "candidate") {
+                await peerConnection.addIceCandidate(
+                    new RTCIceCandidate(signal.candidate)
+                );
+            }
+        } catch (error) {
+            console.error("Error processing signal:", error);
+        }
+    });
+
+    socket.on("receive-message", (data) => {
+        addMessageToList(data, false);
+        if (selectedPeer && data.from === selectedPeer.id) {
+            // Already showing in the current chat
+        } else {
+            const peerElement = document.getElementById(`peer-${data.from}`);
+            if (peerElement) {
+                peerElement.classList.add("has-notification");
+            }
+            showToast(`i18n:${__("newMessageFrom")}:${data.fromName}`);
+        }
+    });
+
     // 创建语言选择器
     createLanguageSelector("language-container");
 
     // 初始化页面文本
     updatePageText();
+
+    // 生成QR码
+    generateQRCode();
+
+    // 现在 Socket 事件监听器已注册，初始化 Socket.IO 连接
+    initializeConnection();
 
     // Message input placeholder
     messageInput.placeholder = __("typeMessage");
@@ -2188,61 +2230,66 @@ document.addEventListener("DOMContentLoaded", function() {
             filePreviewModal.classList.add("hidden");
         }
     });
-});
 
-// 添加语言变更事件监听器
-document.addEventListener("languageChanged", (e) => {
-  console.log(`语言已变更为: ${e.detail.lang}`);
+    // 添加语言变更事件监听器
+    document.addEventListener("languageChanged", (e) => {
+        console.log(`语言已变更为: ${e.detail.lang}`);
 
-  // 更新动态生成的元素
-  updateNoPeersMessage();
+        // 更新动态生成的元素
+        updateNoPeersMessage();
 
-  // 刷新连接状态显示
-  refreshConnectionStatus();
+        // 刷新连接状态显示
+        refreshConnectionStatus();
 
-  // 更新空历史记录提示
-  const emptyHistory = document.querySelector(".empty-history p[data-i18n]");
-  if (emptyHistory) {
-    const i18nKey = emptyHistory.getAttribute("data-i18n");
-    emptyHistory.textContent = __(i18nKey);
-  }
+        // 更新空历史记录提示
+        const emptyHistory = document.querySelector(".empty-history p[data-i18n]");
+        if (emptyHistory) {
+            const i18nKey = emptyHistory.getAttribute("data-i18n");
+            emptyHistory.textContent = __(i18nKey);
+        }
 
-  // 更新文件历史记录中的文本
-  const historyItems = document.querySelectorAll(".history-item");
-  historyItems.forEach((item) => {
-    // 更新方向文本 (sent/received)
-    const directionEl = item.querySelector(".file-direction");
-    if (directionEl) {
-      if (directionEl.classList.contains("sent")) {
-        directionEl.innerHTML = `<i class="fas fa-arrow-up"></i> ${__("sent")}`;
-      } else if (directionEl.classList.contains("received")) {
-        directionEl.innerHTML = `<i class="fas fa-arrow-down"></i> ${__("received")}`;
-      }
-    }
+        // 更新文件历史记录中的文本
+        const historyItems = document.querySelectorAll(".history-item");
+        historyItems.forEach((item) => {
+            // 更新方向文本 (sent/received)
+            const directionEl = item.querySelector(".file-direction");
+            if (directionEl) {
+                if (directionEl.classList.contains("sent")) {
+                    directionEl.innerHTML = `<i class="fas fa-arrow-up"></i> ${__("sent")}`;
+                } else if (directionEl.classList.contains("received")) {
+                    directionEl.innerHTML = `<i class="fas fa-arrow-down"></i> ${__("received")}`;
+                }
+            }
 
-    // 更新"查看"按钮文本
-    const viewBtn = item.querySelector(".preview-btn");
-    if (viewBtn) {
-      viewBtn.title = __("view");
-    }
-    
-    // 更新"下载"按钮文本
-    const downloadBtn = item.querySelector(".download-btn");
-    if (downloadBtn) {
-      downloadBtn.title = __("download");
-    }
-  });
+            // 更新"查看"按钮文本
+            const viewBtn = item.querySelector(".preview-btn");
+            if (viewBtn) {
+                viewBtn.title = __("view");
+            }
+
+            // 更新"下载"按钮文本
+            const downloadBtn = item.querySelector(".download-btn");
+            if (downloadBtn) {
+                downloadBtn.title = __("download");
+            }
+        });
+    });
 });
 
 // 刷新连接状态显示
 function refreshConnectionStatus() {
   const existingStatus = document.querySelector(".connection-status");
   let currentStatus = existingStatus?.dataset?.status || "disconnected";
-  
+
+  // Guard against null connectionManager
+  if (!connectionManager) {
+    return;
+  }
+
   if (selectedPeer && connectionManager.peerConnections[selectedPeer.id]) {
     const peerConnection = connectionManager.peerConnections[selectedPeer.id];
     const dataChannel = peerConnection.dataChannel;
-    
+
     if (dataChannel && dataChannel.readyState === "open") {
       currentStatus = "connected";
     } else if (peerConnection.connectionState === "connected" || peerConnection.iceConnectionState === "connected") {
@@ -2251,7 +2298,7 @@ function refreshConnectionStatus() {
       currentStatus = "disconnected";
     }
   }
-  
+
   // 强制更新连接状态显示
   updateConnectionStatus(currentStatus);
 }
@@ -2346,10 +2393,10 @@ function checkBrowserSupport() {
     }
     
     // 检查WebRTC实现是否完整
-    let isWebRTCComplete = 
-        'getUserMedia' in navigator.mediaDevices || 
-        'webkitGetUserMedia' in navigator || 
-        'mozGetUserMedia' in navigator || 
+    let isWebRTCComplete =
+        (navigator.mediaDevices && 'getUserMedia' in navigator.mediaDevices) ||
+        'webkitGetUserMedia' in navigator ||
+        'mozGetUserMedia' in navigator ||
         'msGetUserMedia' in navigator;
     
     if (!isWebRTCComplete) {
@@ -2358,4 +2405,30 @@ function checkBrowserSupport() {
     
     console.log("浏览器功能检测通过");
     return true;
+}
+
+// 添加QR码生成函数
+function generateQRCode() {
+    const qrcodeContainer = document.getElementById('qrcode');
+    if (!qrcodeContainer) return;
+
+    // 清除已存在的QR码
+    qrcodeContainer.innerHTML = '';
+
+    // 获取当前页面URL
+    const currentURL = window.location.href;
+
+    // 判断是否使用紧凑模式
+    const isCompact = qrcodeContainer.classList.contains('qrcode-compact');
+    const size = isCompact ? 120 : 128;
+
+    // 创建QR码
+    new QRCode(qrcodeContainer, {
+        text: currentURL,
+        width: size,
+        height: size,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
 }

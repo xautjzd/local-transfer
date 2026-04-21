@@ -25,6 +25,7 @@
     <script src="lang/es.js" defer></script>
     <!-- Load the language manager last -->
     <script src="lang/lang-manager.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z2E078LW30"></script>
@@ -55,9 +56,40 @@
         <main>
             <section class="peers-container">
                 <h2 data-i18n="peopleNearby">People Nearby</h2>
-                <div id="peers-list" class="peers-list" aria-live="polite">
-                    <div class="no-peers" data-i18n="waitingForPeople">
-                        Waiting for people to join...
+                <div id="peers-list" aria-live="polite">
+                    <div class="empty-state">
+                        <div class="no-peers" data-i18n="waitingForPeople">
+                            Waiting for other devices to join...
+                        </div>
+                        <p class="waiting-description" data-i18n="waitingDescription">
+                            Open the same URL on other devices to start sharing
+                        </p>
+                        
+                        <!-- QR Code Section -->
+                        <div class="qr-code-section">
+                            <h3 data-i18n="scanQRCode">Scan QR Code</h3>
+                            <p data-i18n="scanQRCodeDescription">
+                                Scan with your phone to quickly open the sharing page
+                            </p>
+                            <div id="qrcode"></div>
+                        </div>
+
+                        <!-- How to Use Section -->
+                        <div class="how-to-use">
+                            <h3 data-i18n="howToUse">How to Use</h3>
+                            <div class="steps">
+                                <p data-i18n="step1">1. Ensure devices are on the same WiFi network</p>
+                                <p data-i18n="step2">2. Open the same URL in browser on other devices</p>
+                                <p data-i18n="step3">3. Wait for devices to appear in the list</p>
+                                <p data-i18n="step4">4. Click on a device name to start sharing files or messages</p>
+                            </div>
+                        </div>
+
+                        <!-- Network Tips -->
+                        <div class="network-tips">
+                            <h3 data-i18n="networkTips">Network Tips</h3>
+                            <p data-i18n="sameLAN">Make sure devices are on the same local network</p>
+                        </div>
                     </div>
                 </div>
             </section>

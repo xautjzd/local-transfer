@@ -1637,3 +1637,805 @@ main {
 .transfer-progress-container.minimized .minimize-progress i {
     transform: rotate(180deg);
 }
+
+/* Empty State Styles - 优化紧凑显示 */
+.empty-state {
+    text-align: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
+    animation: fadeIn 0.5s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.empty-state .no-peers {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-bottom: 0;
+    font-weight: 600;
+}
+
+.empty-state .waiting-description {
+    color: var(--text-secondary);
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    max-width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 网格布局容器 */
+.empty-state-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+    margin-top: 0.5rem;
+}
+
+/* QR Code Section */
+.qr-code-section {
+    grid-column: 1;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--gray-200);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.qr-code-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.qr-code-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.qr-code-section h3:before {
+    content: '\f029';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    font-weight: 900;
+}
+
+.qr-code-section p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    font-size: 0.85rem;
+}
+
+#qrcode {
+    display: flex;
+    justify-content: center;
+    margin: 0.5rem auto;
+    padding: 0.3rem;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: fit-content;
+    flex-grow: 1;
+    align-items: center;
+}
+
+#qrcode img {
+    border: none;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+}
+
+#qrcode img:hover {
+    transform: scale(1.03);
+}
+
+/* Share URL Section */
+.share-url-section {
+    grid-column: 2;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--gray-200);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.share-url-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.share-url-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.share-url-section h3:before {
+    content: '\f0c1';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    font-weight: 900;
+}
+
+.share-url-section p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    font-size: 0.85rem;
+}
+
+.url-copy-container {
+    display: flex;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    flex-grow: 1;
+    align-self: center;
+    width: 100%;
+    max-width: 100%;
+}
+
+.share-url-input {
+    flex: 1;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--gray-200);
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.copy-url-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0 0.8rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    height: 35px;
+}
+
+.copy-url-btn:before {
+    content: '\f0c5';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+}
+
+.copy-url-btn:hover {
+    background: var(--primary-dark);
+}
+
+.copy-url-btn.copied {
+    background: var(--success-color);
+}
+
+.copy-url-btn.copied:before {
+    content: '\f00c';
+}
+
+/* How to Use Section */
+.how-to-use {
+    grid-column: 1 / -1;
+    text-align: left;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.how-to-use:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.how-to-use h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.how-to-use h3:before {
+    content: '\f05a';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    font-weight: 900;
+}
+
+.how-to-use .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.how-to-use .steps p {
+    color: var(--text-secondary);
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--primary-color);
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.how-to-use .steps p:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--primary-color);
+    transform: translateX(5px);
+}
+
+/* Bottom Tips Section */
+.tips-section {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+}
+
+/* Network Tips */
+.network-tips {
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.network-tips:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--warning-color);
+}
+
+.network-tips h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.network-tips h3:before {
+    content: '\f1eb';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--warning-color);
+    font-weight: 900;
+}
+
+.network-tips p {
+    color: var(--text-secondary);
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.5rem;
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--warning-color);
+    transition: all 0.2s;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.network-tips p:hover {
+    transform: translateX(5px);
+    color: var(--warning-color);
+}
+
+/* Troubleshooting Section */
+.troubleshooting-section {
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.troubleshooting-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--warning-color);
+}
+
+.troubleshooting-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.troubleshooting-section h3:before {
+    content: '\f0ad';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--warning-color);
+    font-weight: 900;
+}
+
+.troubleshooting-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.troubleshooting-tips p {
+    color: var(--text-secondary);
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.5rem;
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--warning-color);
+    transition: all 0.2s;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.troubleshooting-tips p:hover {
+    transform: translateX(5px);
+    color: var(--warning-color);
+}
+
+/* 头部内容样式 - 优化紧凑显示 */
+.header-content {
+    margin-bottom: 0.5rem;
+    animation: fadeIn 0.7s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header-content .waiting-description {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    background-color: rgba(52, 152, 219, 0.1);
+    border-radius: 6px;
+    display: inline-block;
+    color: var(--primary-color);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .empty-state {
+        padding: 0.75rem;
+        max-width: 95%;
+    }
+    
+    .empty-state-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .empty-state {
+        padding: 1rem;
+        margin: 0 1rem;
+        gap: 0.75rem;
+    }
+
+    .empty-state-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .qr-code-section,
+    .share-url-section {
+        grid-column: 1;
+    }
+    
+    .tips-section {
+        grid-template-columns: 1fr;
+    }
+
+    .how-to-use .steps {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .qr-code-section,
+    .share-url-section,
+    .how-to-use,
+    .network-tips,
+    .troubleshooting-section {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .empty-state {
+        padding: 0.75rem;
+        gap: 0.5rem;
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    .qr-code-section,
+    .share-url-section,
+    .how-to-use,
+    .network-tips,
+    .troubleshooting-section {
+        padding: 0.6rem;
+    }
+    
+    .how-to-use .steps p,
+    .network-tips p,
+    .troubleshooting-tips p {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.8rem;
+    }
+    
+    .share-url-input {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.6rem;
+    }
+    
+    .copy-url-btn {
+        min-width: 70px;
+        padding: 0 0.6rem;
+        font-size: 0.75rem;
+        height: 32px;
+    }
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  /* 空状态暗色模式 */
+  .empty-state {
+    background: var(--gray-100);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .header-content .no-peers {
+    color: var(--secondary-color);
+  }
+  
+  .header-content .waiting-description {
+    background-color: rgba(160, 196, 255, 0.1);
+    color: var(--secondary-color);
+  }
+  
+  /* 卡片暗色模式 */
+  .qr-code-section,
+  .share-url-section,
+  .how-to-use,
+  .network-tips,
+  .troubleshooting-section {
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+  }
+  
+  .qr-code-section:hover,
+  .share-url-section:hover,
+  .how-to-use:hover {
+    border-color: var(--secondary-color);
+  }
+  
+  .network-tips:hover,
+  .troubleshooting-section:hover {
+    border-color: var(--warning-color);
+  }
+  
+  .qr-code-section h3:before,
+  .share-url-section h3:before,
+  .how-to-use h3:before {
+    color: var(--secondary-color);
+  }
+  
+  #qrcode {
+    background: var(--gray-100);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  #qrcode img {
+    filter: invert(0.8);
+  }
+  
+  .url-copy-container {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+  
+  .share-url-input {
+    border-color: var(--gray-300);
+    background: var(--gray-200);
+  }
+  
+  .how-to-use .steps p,
+  .network-tips p,
+  .troubleshooting-tips p {
+    background-color: var(--gray-200);
+  }
+  
+  .how-to-use .steps p:hover {
+    background-color: rgba(160, 196, 255, 0.1);
+    color: var(--secondary-color);
+  }
+}
+
+/* 紧凑型引导UI样式 */
+.compact-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+/* 连接指南部分 */
+.guide-section {
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+}
+
+.guide-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    position: relative;
+    padding-left: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.guide-section h3:before {
+    content: '\f05a';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    font-weight: 900;
+}
+
+.steps-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.steps-compact p {
+    padding: 0.6rem 0.5rem 0.6rem 1.75rem;
+    background-color: var(--bg-secondary);
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    position: relative;
+    margin: 0;
+    border-left: 3px solid var(--primary-color);
+}
+
+.steps-compact p:before {
+    content: '';
+    position: absolute;
+    left: 0.6rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.steps-compact p:nth-child(1):before { content: '1'; }
+.steps-compact p:nth-child(2):before { content: '2'; }
+.steps-compact p:nth-child(3):before { content: '3'; }
+.steps-compact p:nth-child(4):before { content: '4'; }
+
+/* 仅QR码样式 */
+.quick-connect-item.qr-only {
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+    margin: 0 auto;
+    max-width: 300px;
+    align-items: center;
+}
+
+.quick-connect-item.qr-only .quick-connect-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
+    justify-content: center;
+}
+
+.quick-connect-item.qr-only .quick-connect-header i {
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.quick-connect-item.qr-only .quick-connect-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* 二维码紧凑型 */
+.qrcode-compact {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    padding: 0.3rem;
+    border-radius: 0.5rem;
+    width: fit-content;
+    margin: 0 auto;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.qrcode-compact img {
+    max-width: 120px;
+    height: auto;
+}
+
+/* 网络提示与常见问题 */
+.quick-help {
+    background: var(--bg-primary);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--gray-200);
+}
+
+.quick-help-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.quick-help-header i {
+    color: var(--warning-color);
+    font-size: 1rem;
+}
+
+.quick-help-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.help-tips {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.help-tips li {
+    position: relative;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+    background-color: var(--bg-secondary);
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    border-left: 3px solid var(--warning-color);
+}
+
+.help-tips li:before {
+    content: '\f071';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    left: 0.4rem;
+    font-weight: 900;
+    font-size: 0.75rem;
+    color: var(--warning-color);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .steps-compact,
+    .help-tips {
+        grid-template-columns: 1fr;
+    }
+    
+    .qrcode-compact {
+        margin: 0 auto;
+    }
+}
+
+/* 暗黑模式适配 */
+@media (prefers-color-scheme: dark) {
+    .guide-section,
+    .quick-connect-item.qr-only,
+    .quick-help {
+        background: var(--gray-100);
+        border-color: var(--gray-300);
+    }
+    
+    .steps-compact p,
+    .help-tips li {
+        background-color: var(--gray-200);
+    }
+    
+    .guide-section h3:before {
+        color: var(--secondary-color);
+    }
+    
+    .quick-connect-item.qr-only .quick-connect-header i {
+        color: var(--secondary-color);
+    }
+    
+    .qrcode-compact {
+        background: var(--gray-100);
+    }
+    
+    .qrcode-compact img {
+        filter: invert(0.8);
+    }
+}
